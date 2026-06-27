@@ -112,6 +112,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementStore } from '@/stores/announcements'
 import { showConfirm } from '@/utils/message'
+import { getStableUptimeDays } from '@/utils/uptime'
 import { 
   LayoutDashboard, 
   Key, 
@@ -155,12 +156,7 @@ const handleLogout = () => {
 
 const currentRouteName = computed(() => route.name || 'Dashboard')
 
-const uptimeDays = computed(() => {
-  // Set start date to 50 days ago from 2026-06-26 (approx 2026-05-07)
-  const start = new Date('2026-05-07T00:00:00Z')
-  const diff = Math.max(0, new Date().getTime() - start.getTime())
-  return Math.floor(diff / (1000 * 60 * 60 * 24)) || 50
-})
+const uptimeDays = computed(() => getStableUptimeDays())
 
 const menuItems = [
   { name: '仪表盘', path: '/', icon: LayoutDashboard },

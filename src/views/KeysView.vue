@@ -16,12 +16,24 @@
         <table class="w-full text-left border-collapse min-w-[1120px]">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
-              <th v-for="i in 7" :key="i" class="px-6 py-4"><div class="h-4 bg-white/10 rounded w-16"></div></th>
+              <th
+                v-for="i in 7"
+                :key="i"
+                class="px-6 py-4"
+                :class="i === 7 ? 'sticky right-0 z-20 bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)]' : ''"
+              >
+                <div class="h-4 bg-white/10 rounded w-16"></div>
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
             <tr v-for="i in 5" :key="i" class="animate-pulse">
-              <td v-for="j in 7" :key="j" class="px-6 py-4">
+              <td
+                v-for="j in 7"
+                :key="j"
+                class="px-6 py-4"
+                :class="j === 7 ? 'sticky right-0 z-10 bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)]' : ''"
+              >
                 <div class="h-4 bg-white/5 rounded" :class="j === 3 ? 'w-48' : 'w-24'"></div>
               </td>
             </tr>
@@ -37,7 +49,7 @@
         <p class="text-zinc-400 mb-6 max-w-md mx-auto">您尚未创建任何 API 密钥。创建一个来开始您的 API 调用之旅吧。</p>
       </div>
 
-      <div v-else class="w-full overflow-x-auto">
+      <div v-else class="w-full overflow-x-auto relative">
         <table class="w-full text-left border-collapse min-w-[1120px]">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
@@ -47,7 +59,7 @@
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">创建时间</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">上次使用</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">状态</th>
-              <th class="px-6 py-4 text-sm font-medium text-zinc-400 text-right">操作</th>
+              <th class="sticky right-0 z-20 px-6 py-4 text-sm font-medium text-zinc-400 text-right bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)]">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
@@ -91,7 +103,7 @@
                   {{ getApiKeyStatusLabel(item.status) }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-right min-w-[160px]">
+              <td class="sticky right-0 z-10 px-6 py-4 text-right min-w-[160px] bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)] group-hover:bg-[#17171a]">
                 <div class="flex items-center justify-end space-x-3">
                   <button
                     @click="handleToggleStatus(item)"
