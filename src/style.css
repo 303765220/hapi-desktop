@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #8b5cf6;
+  --color-primary-dark: #6d28d9;
+  --color-dark-bg: #09090b;
+  --color-card-bg: rgba(24, 24, 27, 0.7);
+  --color-card-border: rgba(255, 255, 255, 0.1);
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+}
+
+body {
+  @apply bg-[#09090b] text-[#f4f4f5] antialiased selection:bg-purple-500/30;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  @apply bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl;
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+/* Custom NProgress styling */
+#nprogress .bar {
+  background: #a855f7 !important;
+  height: 3px !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #a855f7, 0 0 5px #a855f7 !important;
+}

@@ -1,0 +1,22 @@
+[package]
+name = "hapi-desktop"
+version = "0.1.0"
+description = "Hapi desktop client."
+authors = ["Hapi"]
+edition = "2021"
+license = "UNLICENSED"
+
+[lib]
+name = "hapi_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.2", features = [] }
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.11.2", features = [] }
+tauri-plugin-http = "2.5.2"
+codex-mac-engine = { path = "crates/codex-mac-engine" }
+codex-win-engine = { path = "crates/codex-win-engine" }

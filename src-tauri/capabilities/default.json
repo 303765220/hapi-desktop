@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for the Hapi desktop client.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://www.hapi666.com/**" }]
+    }
+  ]
+}
