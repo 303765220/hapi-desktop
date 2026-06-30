@@ -7,9 +7,16 @@ use toml_edit::{value, DocumentMut, Item, Table};
 
 pub const HAPI_BASE_URL: &str = "https://www.hapi666.com/api/v1";
 const HAPI_PROVIDER_ID: &str = "hapi";
+// 默认模型只用于未识别平台的兜底配置，保持 gpt-5 可以让旧的通用客户端仍能发起 OpenAI 兼容请求；改成渠道专属模型会导致未带 platform 的 Key 写入后不可用，删除则会让配置生成缺少 model。用 cargo test client_setup 覆盖默认分支和清理逻辑。
 const DEFAULT_CODE_MODEL: &str = "gpt-5";
-const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-pro";
+// Gemini CLI 只能写一个 GEMINI_MODEL，默认取当前 Gemini 支持列表的首个稳定入口；改低会回到旧模型，改高或删除会让 CLI 配置缺少可直接使用的模型。用 gemini_env_* 单测验证写入值。
+const DEFAULT_GEMINI_MODEL: &str = "gemini-3.1-pro-preview";
+// OpenAI 分组写入 OpenCode/OpenClaw/Hermes 时暴露本站支持的 GPT 入口；减少会让用户在客户端不可选对应模型，增加未支持模型会造成运行时报错。用 opencode_config_adds_gpt_models_for_openai_key 验证列表。
 const OPENCODE_GPT_MODELS: &[&str] = &["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"];
+// Anthropic 分组写入 Claude Code 兼容模型，必须只包含 Claude 可用模型；混入 GPT/Gemini 会让 Claude 类 Key 请求失败。用 anthropic 平台的 OpenCode/OpenClaw 单测验证。
+const CLAUDE_CODE_MODELS: &[&str] = &["claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"];
+// Gemini 分组写入 Gemini 可用模型，首项同时作为 Gemini CLI 默认模型；减少会隐藏用户要求的模型，增加未上线模型会造成客户端配置成功但调用失败。用 gemini 平台的 OpenCode/Hermes 和 Gemini CLI 单测验证。
+const GEMINI_MODELS: &[&str] = &["gemini-3.1-pro-preview", "gemini-3.5-flash"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -280,10 +287,10 @@ fn configure_client_with_paths(
             write_json_file(&config_path, &build_opencode_config(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
         }
         ClientSetupClient::Openclaw => {
-            write_json_file(&config_path, &build_openclaw_config(read_optional_text(&config_path)?, trimmed_key)?)?;
+            write_json_file(&config_path, &build_openclaw_config(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
         }
         ClientSetupClient::Hermes => {
-            write_text_file(&config_path, &build_hermes_yaml_text(read_optional_text(&config_path)?, trimmed_key)?)?;
+            write_text_file(&config_path, &build_hermes_yaml_text(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
         }
     }
 
@@ -585,17 +592,19 @@ fn build_opencode_config(
 
 fn opencode_models_for_platform(key_platform: Option<&str>) -> Value {
     let mut models = Map::new();
-    if key_platform == Some("openai") {
-        for model in OPENCODE_GPT_MODELS {
-            models.insert((*model).to_string(), json!({ "name": model }));
-        }
-    } else {
-        models.insert(
-            DEFAULT_CODE_MODEL.to_string(),
-            json!({ "name": DEFAULT_CODE_MODEL }),
-        );
+    for model in code_models_for_platform(key_platform) {
+        models.insert(model.to_string(), json!({ "name": model }));
     }
     Value::Object(models)
+}
+
+fn code_models_for_platform(key_platform: Option<&str>) -> &'static [&'static str] {
+    match key_platform {
+        Some("openai") => OPENCODE_GPT_MODELS,
+        Some("anthropic") => CLAUDE_CODE_MODELS,
+        Some("gemini") => GEMINI_MODELS,
+        _ => &[DEFAULT_CODE_MODEL],
+    }
 }
 
 fn clear_opencode_config(existing: Option<String>) -> Result<Value, String> {
@@ -618,7 +627,11 @@ fn read_configured_opencode_key(existing: Option<String>) -> Option<String> {
         .filter(|key| !key.trim().is_empty())
 }
 
-fn build_openclaw_config(existing: Option<String>, api_key: &str) -> Result<Value, String> {
+fn build_openclaw_config(
+    existing: Option<String>,
+    api_key: &str,
+    key_platform: Option<&str>,
+) -> Result<Value, String> {
     let mut config = parse_json_or_default(existing, json!({ "models": { "mode": "merge", "providers": {} } }))?;
     ensure_object(&mut config);
     if config.get("models").and_then(Value::as_object).is_none() {
@@ -630,16 +643,15 @@ fn build_openclaw_config(existing: Option<String>, api_key: &str) -> Result<Valu
     if config["models"].get("mode").is_none() {
         config["models"]["mode"] = Value::String("merge".to_string());
     }
+    let provider_models = code_models_for_platform(key_platform)
+        .iter()
+        .map(|model| json!({ "id": model, "name": model }))
+        .collect::<Vec<_>>();
     config["models"]["providers"][HAPI_PROVIDER_ID] = json!({
         "baseUrl": HAPI_BASE_URL,
         "apiKey": api_key,
         "api": "openai",
-        "models": [
-            {
-                "id": DEFAULT_CODE_MODEL,
-                "name": DEFAULT_CODE_MODEL
-            }
-        ]
+        "models": provider_models
     });
     Ok(config)
 }
@@ -668,7 +680,11 @@ fn read_configured_openclaw_key(existing: Option<String>) -> Option<String> {
         .filter(|key| !key.trim().is_empty())
 }
 
-fn build_hermes_yaml_text(existing: Option<String>, api_key: &str) -> Result<String, String> {
+fn build_hermes_yaml_text(
+    existing: Option<String>,
+    api_key: &str,
+    key_platform: Option<&str>,
+) -> Result<String, String> {
     let mut config = match existing {
         Some(text) if !text.trim().is_empty() => serde_yaml::from_str::<serde_yaml::Value>(&text)
             .map_err(|err| format!("解析 Hermes config.yaml 失败: {err}"))?,
@@ -683,16 +699,18 @@ fn build_hermes_yaml_text(existing: Option<String>, api_key: &str) -> Result<Str
         .as_mapping_mut()
         .ok_or_else(|| "Hermes config.yaml 顶层不是 YAML 对象。".to_string())?;
     let key = serde_yaml::Value::String("custom_providers".to_string());
+    let model_names = code_models_for_platform(key_platform);
+    let default_model = model_names.first().copied().unwrap_or(DEFAULT_CODE_MODEL);
+    let models = model_names
+        .iter()
+        .map(|model| ((*model).to_string(), json!({ "context_length": 200000 })))
+        .collect::<Map<_, _>>();
     let entry = serde_yaml::to_value(json!({
         "name": HAPI_PROVIDER_ID,
         "base_url": HAPI_BASE_URL,
         "api_key": api_key,
-        "model": DEFAULT_CODE_MODEL,
-        "models": {
-            DEFAULT_CODE_MODEL: {
-                "context_length": 200000
-            }
-        }
+        "model": default_model,
+        "models": models
     }))
     .map_err(|err| format!("生成 Hermes provider 失败: {err}"))?;
 
@@ -868,7 +886,7 @@ base_url = "https://api.openai.com/v1"
         assert!(text.contains("OTHER=value"));
         assert!(text.contains("GEMINI_API_KEY=new-key"));
         assert!(text.contains("GOOGLE_GEMINI_BASE_URL=https://www.hapi666.com/api/v1"));
-        assert!(text.contains("GEMINI_MODEL=gemini-2.5-pro"));
+        assert!(text.contains("GEMINI_MODEL=gemini-3.1-pro-preview"));
     }
 
     #[test]
@@ -891,12 +909,72 @@ base_url = "https://api.openai.com/v1"
     }
 
     #[test]
+    fn opencode_config_adds_claude_models_for_anthropic_key() {
+        let config = build_opencode_config(None, "key", Some("anthropic")).unwrap();
+
+        assert_eq!(
+            config["provider"]["hapi"]["models"]["claude-opus-4-8"]["name"],
+            "claude-opus-4-8"
+        );
+        assert_eq!(
+            config["provider"]["hapi"]["models"]["claude-opus-4-7"]["name"],
+            "claude-opus-4-7"
+        );
+        assert_eq!(
+            config["provider"]["hapi"]["models"]["claude-opus-4-6"]["name"],
+            "claude-opus-4-6"
+        );
+    }
+
+    #[test]
+    fn opencode_config_adds_gemini_models_for_gemini_key() {
+        let config = build_opencode_config(None, "key", Some("gemini")).unwrap();
+
+        assert_eq!(
+            config["provider"]["hapi"]["models"]["gemini-3.1-pro-preview"]["name"],
+            "gemini-3.1-pro-preview"
+        );
+        assert_eq!(
+            config["provider"]["hapi"]["models"]["gemini-3.5-flash"]["name"],
+            "gemini-3.5-flash"
+        );
+    }
+
+    #[test]
+    fn gemini_env_uses_current_supported_default_model() {
+        let text = build_gemini_env_text(None, "new-key").unwrap();
+
+        assert!(text.contains("GEMINI_MODEL=gemini-3.1-pro-preview"));
+    }
+
+    #[test]
     fn openclaw_config_adds_hapi_provider() {
-        let config = build_openclaw_config(Some(r#"{ "models": { "mode": "merge" } }"#.to_string()), "key").unwrap();
+        let config = build_openclaw_config(Some(r#"{ "models": { "mode": "merge" } }"#.to_string()), "key", None).unwrap();
 
         assert_eq!(config["models"]["mode"], "merge");
         assert_eq!(config["models"]["providers"]["hapi"]["baseUrl"], HAPI_BASE_URL);
         assert_eq!(config["models"]["providers"]["hapi"]["apiKey"], "key");
+    }
+
+    #[test]
+    fn openclaw_config_adds_claude_models_for_anthropic_key() {
+        let config = build_openclaw_config(None, "key", Some("anthropic")).unwrap();
+        let models = config["models"]["providers"]["hapi"]["models"].as_array().unwrap();
+        let ids = models
+            .iter()
+            .filter_map(|item| item.get("id").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+
+        assert_eq!(ids, vec!["claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"]);
+    }
+
+    #[test]
+    fn hermes_yaml_adds_gemini_models_for_gemini_key() {
+        let text = build_hermes_yaml_text(None, "key", Some("gemini")).unwrap();
+
+        assert!(text.contains("model: gemini-3.1-pro-preview"));
+        assert!(text.contains("gemini-3.1-pro-preview:"));
+        assert!(text.contains("gemini-3.5-flash:"));
     }
 
     #[test]
@@ -909,7 +987,7 @@ custom_providers:
   api_key: old
 "#;
 
-        let text = build_hermes_yaml_text(Some(existing.to_string()), "key").unwrap();
+        let text = build_hermes_yaml_text(Some(existing.to_string()), "key", None).unwrap();
 
         assert!(text.contains("agent:"));
         assert!(text.contains("max_turns: 50"));

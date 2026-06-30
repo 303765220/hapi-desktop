@@ -59,6 +59,17 @@ describe('client setup service', () => {
     })
   })
 
+  it('passes anthropic key platform to desktop setup', async () => {
+    const invoke = vi.fn().mockResolvedValue(result)
+
+    await expect(configureClient('opencode', 'sk-claude', 'anthropic', true, invoke)).resolves.toEqual(result)
+    expect(invoke).toHaveBeenCalledWith('configure_client', {
+      client: 'opencode',
+      apiKey: 'sk-claude',
+      keyPlatform: 'anthropic',
+    })
+  })
+
   it('clears a desktop client config through Tauri', async () => {
     const invoke = vi.fn().mockResolvedValue(result)
 
