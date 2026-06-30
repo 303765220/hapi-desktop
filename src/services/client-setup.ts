@@ -43,6 +43,7 @@ export async function loadClientSetupStatus(
 export async function configureClient(
   client: ClientSetupClient,
   apiKey: string,
+  keyPlatform: string | null = null,
   desktop = isTauriDesktop(),
   invoke: InvokeFn = defaultInvoke
 ): Promise<ClientConfigureResult | null> {
@@ -53,6 +54,21 @@ export async function configureClient(
   return invoke<ClientConfigureResult>('configure_client', {
     client,
     apiKey,
+    keyPlatform,
+  })
+}
+
+export async function clearClientConfig(
+  client: ClientSetupClient,
+  desktop = isTauriDesktop(),
+  invoke: InvokeFn = defaultInvoke
+): Promise<ClientConfigureResult | null> {
+  if (!desktop) {
+    return null
+  }
+
+  return invoke<ClientConfigureResult>('clear_client_config', {
+    client,
   })
 }
 

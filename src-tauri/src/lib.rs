@@ -599,8 +599,16 @@ fn client_setup_status() -> Result<Vec<client_setup::ClientSetupStatus>, String>
 fn configure_client(
     client: client_setup::ClientSetupClient,
     api_key: String,
+    key_platform: Option<String>,
 ) -> Result<client_setup::ClientConfigureResult, String> {
-    client_setup::configure_client(client, api_key)
+    client_setup::configure_client(client, api_key, key_platform)
+}
+
+#[tauri::command]
+fn clear_client_config(
+    client: client_setup::ClientSetupClient,
+) -> Result<client_setup::ClientConfigureResult, String> {
+    client_setup::clear_client_config(client)
 }
 
 pub fn run() {
@@ -613,7 +621,8 @@ pub fn run() {
             codex_install_status,
             install_codex,
             client_setup_status,
-            configure_client
+            configure_client,
+            clear_client_config
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Hapi desktop client");

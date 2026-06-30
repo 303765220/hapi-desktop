@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  clearClientConfig,
   configureClient,
   filterApiKeysForClient,
   loadClientSetupStatus,
@@ -34,7 +35,8 @@ describe('client setup service', () => {
     const invoke = vi.fn()
 
     await expect(loadClientSetupStatus(false, invoke)).resolves.toEqual([])
-    await expect(configureClient('codex', 'sk-test', false, invoke)).resolves.toBeNull()
+    await expect(configureClient('codex', 'sk-test', null, false, invoke)).resolves.toBeNull()
+    await expect(clearClientConfig('codex', false, invoke)).resolves.toBeNull()
     expect(invoke).not.toHaveBeenCalled()
   })
 
@@ -48,10 +50,20 @@ describe('client setup service', () => {
   it('configures a desktop client through Tauri', async () => {
     const invoke = vi.fn().mockResolvedValue(result)
 
-    await expect(configureClient('codex', 'sk-test', true, invoke)).resolves.toEqual(result)
+    await expect(configureClient('codex', 'sk-test', 'openai', true, invoke)).resolves.toEqual(result)
     expect(invoke).toHaveBeenCalledWith('configure_client', {
       client: 'codex',
       apiKey: 'sk-test',
+      keyPlatform: 'openai',
+    })
+  })
+
+  it('clears a desktop client config through Tauri', async () => {
+    const invoke = vi.fn().mockResolvedValue(result)
+
+    await expect(clearClientConfig('codex', true, invoke)).resolves.toEqual(result)
+    expect(invoke).toHaveBeenCalledWith('clear_client_config', {
+      client: 'codex',
     })
   })
 

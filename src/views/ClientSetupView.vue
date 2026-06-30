@@ -160,6 +160,17 @@
               <Settings2 v-else class="mr-2 h-4 w-4" />
               {{ item.installed ? '写入配置' : '请先安装' }}
             </button>
+
+            <button
+              v-if="item.configured"
+              @click="handleClearConfig(item)"
+              class="h-10 inline-flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 px-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="configuringClient === item.client"
+              title="清除 Hapi 配置"
+            >
+              <Loader2 v-if="configuringClient === item.client" class="h-4 w-4 animate-spin" />
+              <X v-else class="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -189,6 +200,7 @@ import keysAPI from '@/api/keys'
 import type { ApiKey } from '@/types'
 import { installCodex } from '@/services/codex-installer'
 import {
+  clearClientConfig,
   configureClient,
   filterApiKeysForClient,
   loadClientSetupStatus,
@@ -324,15 +336,30 @@ const handleConfigure = async (item: ClientSetupStatus) => {
     message.warning('请先选择匹配的 active API Key')
     return
   }
+  const selectedApiKey = availableKeysForClient(item.client).find((key) => key.key === apiKey)
   configuringClient.value = item.client
   pageError.value = ''
   try {
-    const result = await configureClient(item.client, apiKey)
+    const result = await configureClient(item.client, apiKey, selectedApiKey?.group?.platform || null)
     if (result?.backupPath) {
       message.success('配置已写入，原配置已备份')
     } else {
       message.success('配置已写入')
     }
+    await loadStatuses()
+  } catch (err) {
+    pageError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    configuringClient.value = ''
+  }
+}
+
+const handleClearConfig = async (item: ClientSetupStatus) => {
+  configuringClient.value = item.client
+  pageError.value = ''
+  try {
+    await clearClientConfig(item.client)
+    message.success('Hapi 配置已清除')
     await loadStatuses()
   } catch (err) {
     pageError.value = err instanceof Error ? err.message : String(err)
