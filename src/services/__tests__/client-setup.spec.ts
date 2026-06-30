@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   configureClient,
+  filterApiKeysForClient,
   loadClientSetupStatus,
+  requiredPlatformForClient,
   type ClientConfigureResult,
   type ClientSetupStatus,
 } from '../client-setup'
@@ -51,5 +53,25 @@ describe('client setup service', () => {
       client: 'codex',
       apiKey: 'sk-test',
     })
+  })
+
+  it('restricts Codex and Gemini keys to their matching platforms', () => {
+    const keys = [
+      { id: 1, key: 'openai-key', status: 'active', group: { platform: 'openai' } },
+      { id: 2, key: 'gemini-key', status: 'active', group: { platform: 'gemini' } },
+      { id: 3, key: 'inactive-gemini-key', status: 'inactive', group: { platform: 'gemini' } },
+      { id: 4, key: 'anthropic-key', status: 'active', group: { platform: 'anthropic' } },
+    ] as any
+
+    expect(requiredPlatformForClient('codex')).toBe('openai')
+    expect(requiredPlatformForClient('geminiCli')).toBe('gemini')
+    expect(requiredPlatformForClient('opencode')).toBeNull()
+    expect(filterApiKeysForClient(keys, 'codex').map((key) => key.key)).toEqual(['openai-key'])
+    expect(filterApiKeysForClient(keys, 'geminiCli').map((key) => key.key)).toEqual(['gemini-key'])
+    expect(filterApiKeysForClient(keys, 'openclaw').map((key) => key.key)).toEqual([
+      'openai-key',
+      'gemini-key',
+      'anthropic-key',
+    ])
   })
 })

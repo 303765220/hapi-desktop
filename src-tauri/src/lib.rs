@@ -213,11 +213,11 @@ fn build_codex_install_status() -> CodexInstallStatus {
     } else if platform == "unsupported" {
         "当前系统暂不支持自动安装引导。".to_string()
     } else if platform == "windows" {
-        "将读取 agentsmirror 的 Windows manifest 与 checksums, 下载校验后执行 MSIX 安装。".to_string()
+        "将读取 Windows 安装清单并校验后执行 MSIX 安装。".to_string()
     } else if platform == "macos" {
-        "将读取 agentsmirror 的 Sparkle appcast, 下载校验后安装 Codex.app。".to_string()
+        "将读取 macOS 安装清单并校验后安装 Codex.app。".to_string()
     } else {
-        "将从 agentsmirror 镜像源安装当前系统对应的 Codex。".to_string()
+        "将安装当前系统对应的 Codex。".to_string()
     };
 
     CodexInstallStatus {
@@ -323,7 +323,7 @@ fn install_windows_codex(status: &mut CodexInstallStatus) -> Result<(), String> 
     status.version = Some(plan.version);
     status.verified = true;
     status.installed = report.installed.is_some() || codex_installed("windows");
-    status.note = "已通过 agentsmirror manifest/checksums 校验并执行 Windows MSIX 安装。".to_string();
+    status.note = "已通过 Windows manifest/checksums 校验并执行 MSIX 安装。".to_string();
     Ok(())
 }
 
@@ -537,7 +537,7 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
     status.version = Some(latest.short_version.clone());
     status.verified = true;
     status.installed = detected.is_some() || install_path.exists();
-    status.note = "已通过 agentsmirror appcast 校验并安装 macOS Codex.app。".to_string();
+    status.note = "已通过 macOS appcast 校验并安装 Codex.app。".to_string();
     Ok(())
 }
 

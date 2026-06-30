@@ -12,7 +12,7 @@ describe('codex installer service', () => {
     installedPath: null,
     version: null,
     verified: false,
-    note: '将读取 agentsmirror 的 Sparkle appcast, 下载校验后安装 Codex.app。',
+    note: '将读取 macOS 安装清单并校验后安装 Codex.app。',
   }
 
   it('does nothing on web builds', async () => {

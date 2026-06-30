@@ -9,7 +9,7 @@
 - 支持 Gemini CLI、Codex、OpenCode、OpenClaw、Hermes。
 - 先检测本机是否安装或是否存在默认配置目录。
 - 未检测到客户端时提示先安装。
-- 只有 Codex 提供 agentsmirror 一键安装能力，复用既有安装器。
+- 只有 Codex 提供一键安装能力，复用既有安装器。
 - 用户必须显式选择一个 `active` Hapi API Key 后才能写配置。
 - Base URL 固定为 `https://www.hapi666.com/api/v1`。
 

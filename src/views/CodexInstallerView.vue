@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h2 class="text-2xl font-semibold text-white">Codex 安装器</h2>
-        <p class="mt-1 text-sm text-zinc-400">读取 agentsmirror 清单，下载校验后在本机执行 Codex 安装。</p>
+        <p class="mt-1 text-sm text-zinc-400">读取安装清单，下载校验后在本机执行 Codex 安装。</p>
       </div>
       <button
         v-if="isDesktop"
@@ -45,8 +45,8 @@
             </div>
           </div>
           <div class="rounded-lg border border-white/10 bg-black/20 p-4">
-            <div class="text-xs font-medium text-zinc-500">安装源</div>
-            <div class="mt-2 text-sm font-semibold text-purple-300">agentsmirror</div>
+            <div class="text-xs font-medium text-zinc-500">安装方式</div>
+            <div class="mt-2 text-sm font-semibold text-purple-300">自动安装</div>
           </div>
           <div class="rounded-lg border border-white/10 bg-black/20 p-4">
             <div class="text-xs font-medium text-zinc-500">校验</div>
@@ -61,7 +61,7 @@
             <Info class="mt-0.5 h-5 w-5 shrink-0 text-purple-400" />
             <div class="min-w-0">
               <div class="text-sm font-medium text-white">{{ status?.note || '正在检测 Codex 安装状态...' }}</div>
-              <div class="mt-2 truncate font-mono text-xs text-zinc-500">{{ status?.installedPath || status?.stagedPath || mirrorBaseUrl }}</div>
+              <div class="mt-2 truncate font-mono text-xs text-zinc-500">{{ status?.installedPath || status?.stagedPath || installSourceLabel }}</div>
               <div v-if="status?.version" class="mt-1 text-xs text-zinc-500">版本：{{ status.version }}</div>
             </div>
           </div>
@@ -94,7 +94,7 @@ import { isTauriDesktop } from '@/utils/desktop-env'
 import { installCodex, loadCodexInstallStatus, type CodexInstallStatus } from '@/services/codex-installer'
 import { useMessage } from '@/utils/message'
 
-const mirrorBaseUrl = 'https://codexapp.agentsmirror.com'
+const installSourceLabel = 'Codex 安装清单'
 const message = useMessage()
 const isDesktop = isTauriDesktop()
 const loading = ref(false)

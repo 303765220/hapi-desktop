@@ -15,7 +15,7 @@
 - Codex 配置必须保留现有登录态，不能整份覆盖 `auth.json`。
 - API Key、密码、密钥和本地私有配置禁止提交到 Git。
 - 默认 Hapi Base URL 固定为 `https://www.hapi666.com/api/v1`。
-- 只有 Codex 提供 agentsmirror 一键安装。
+- 只有 Codex 提供一键安装。
 
 ---
 
