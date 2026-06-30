@@ -10,6 +10,7 @@ export interface ClientSetupStatus {
   installed: boolean
   configured: boolean
   configuredKey: string | null
+  configuredKeys?: string[]
   command: string
   configPath: string
   note: string
@@ -61,6 +62,7 @@ export async function configureClient(
 
 export async function clearClientConfig(
   client: ClientSetupClient,
+  apiKey: string | null = null,
   desktop = isTauriDesktop(),
   invoke: InvokeFn = defaultInvoke
 ): Promise<ClientConfigureResult | null> {
@@ -70,6 +72,7 @@ export async function clearClientConfig(
 
   return invoke<ClientConfigureResult>('clear_client_config', {
     client,
+    apiKey,
   })
 }
 

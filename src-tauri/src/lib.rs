@@ -607,8 +607,9 @@ fn configure_client(
 #[tauri::command]
 fn clear_client_config(
     client: client_setup::ClientSetupClient,
+    api_key: Option<String>,
 ) -> Result<client_setup::ClientConfigureResult, String> {
-    client_setup::clear_client_config(client)
+    client_setup::clear_client_config(client, api_key)
 }
 
 pub fn run() {

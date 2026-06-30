@@ -151,7 +151,7 @@
             </button>
 
             <button
-              v-if="!item.configured"
+              v-if="canWriteConfig(item)"
               @click="handleConfigure(item)"
               class="flex-1 h-10 inline-flex items-center justify-center rounded-xl px-2 sm:px-3 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 shadow-lg whitespace-nowrap"
               :class="item.installed ? 'bg-purple-600 hover:bg-purple-500 hover:shadow-purple-500/25' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'"
@@ -163,7 +163,7 @@
             </button>
 
             <button
-              v-if="item.configured"
+              v-if="canClearConfig(item)"
               @click="handleClearConfig(item)"
               class="h-10 inline-flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 px-3 text-sm font-bold text-red-300 transition-all hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="configuringClient === item.client"
@@ -280,6 +280,27 @@ const setSelectedKey = (client: ClientSetupClient, key: string) => {
   }
 }
 
+const configuredKeysForItem = (item: ClientSetupStatus) => item.configuredKeys || (item.configuredKey ? [item.configuredKey] : [])
+
+const selectedKeyConfigured = (item: ClientSetupStatus) => {
+  const selectedKey = selectedKeys.value[item.client]
+  return !!selectedKey && configuredKeysForItem(item).includes(selectedKey)
+}
+
+const canWriteConfig = (item: ClientSetupStatus) => {
+  if (item.client === 'opencode') {
+    return !selectedKeyConfigured(item)
+  }
+  return !item.configured
+}
+
+const canClearConfig = (item: ClientSetupStatus) => {
+  if (item.client === 'opencode') {
+    return selectedKeyConfigured(item)
+  }
+  return item.configured
+}
+
 const syncConfiguredKeys = () => {
   const nextSelected = { ...selectedKeys.value }
   for (const item of statuses.value) {
@@ -370,10 +391,11 @@ const handleConfigure = async (item: ClientSetupStatus) => {
 }
 
 const handleClearConfig = async (item: ClientSetupStatus) => {
+  const apiKey = item.client === 'opencode' ? selectedKeys.value[item.client] || null : null
   configuringClient.value = item.client
   pageError.value = ''
   try {
-    await clearClientConfig(item.client)
+    await clearClientConfig(item.client, apiKey)
     message.success('Hapi 配置已清除')
     await loadStatuses()
   } catch (err) {

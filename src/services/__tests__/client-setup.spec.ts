@@ -18,6 +18,7 @@ describe('client setup service', () => {
       installed: true,
       configured: false,
       configuredKey: null,
+      configuredKeys: [],
       command: 'codex',
       configPath: '/Users/demo/.codex/config.toml',
       note: '已检测到客户端，可写入 Hapi 配置。',
@@ -37,7 +38,7 @@ describe('client setup service', () => {
 
     await expect(loadClientSetupStatus(false, invoke)).resolves.toEqual([])
     await expect(configureClient('codex', 'sk-test', null, false, invoke)).resolves.toBeNull()
-    await expect(clearClientConfig('codex', false, invoke)).resolves.toBeNull()
+    await expect(clearClientConfig('codex', null, false, invoke)).resolves.toBeNull()
     expect(invoke).not.toHaveBeenCalled()
   })
 
@@ -73,9 +74,20 @@ describe('client setup service', () => {
   it('clears a desktop client config through Tauri', async () => {
     const invoke = vi.fn().mockResolvedValue(result)
 
-    await expect(clearClientConfig('codex', true, invoke)).resolves.toEqual(result)
+    await expect(clearClientConfig('codex', null, true, invoke)).resolves.toEqual(result)
     expect(invoke).toHaveBeenCalledWith('clear_client_config', {
       client: 'codex',
+      apiKey: null,
+    })
+  })
+
+  it('passes selected key when clearing a desktop client config', async () => {
+    const invoke = vi.fn().mockResolvedValue(result)
+
+    await expect(clearClientConfig('opencode', 'sk-test', true, invoke)).resolves.toEqual(result)
+    expect(invoke).toHaveBeenCalledWith('clear_client_config', {
+      client: 'opencode',
+      apiKey: 'sk-test',
     })
   })
 
