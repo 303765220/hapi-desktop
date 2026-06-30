@@ -109,14 +109,9 @@ const router = createRouter({
           component: () => import('@/views/AffiliateView.vue'),
         },
         {
-          path: 'tutorial',
-          name: 'Tutorial',
-          component: () => import('@/views/TutorialView.vue'),
-        },
-        {
-          path: 'codex-installer',
-          name: 'Codex 安装器',
-          component: () => import('@/views/CodexInstallerView.vue'),
+          path: 'client-setup',
+          name: '一键配置',
+          component: () => import('@/views/ClientSetupView.vue'),
         },
         {
           path: 'status',

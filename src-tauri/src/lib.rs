@@ -3,6 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
+mod client_setup;
+
 const SAVED_CREDENTIALS_FILE: &str = "saved-credentials.json";
 const CODEX_MIRROR_BASE_URL: &str = "https://codexapp.agentsmirror.com";
 const CODEX_MAC_ARM64_APPCAST_URL: &str = "https://codexapp.agentsmirror.com/latest/appcast.xml";
@@ -588,6 +590,19 @@ fn install_codex() -> Result<CodexInstallStatus, String> {
     Ok(status)
 }
 
+#[tauri::command]
+fn client_setup_status() -> Result<Vec<client_setup::ClientSetupStatus>, String> {
+    client_setup::client_setup_status()
+}
+
+#[tauri::command]
+fn configure_client(
+    client: client_setup::ClientSetupClient,
+    api_key: String,
+) -> Result<client_setup::ClientConfigureResult, String> {
+    client_setup::configure_client(client, api_key)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
@@ -596,7 +611,9 @@ pub fn run() {
             save_saved_credentials,
             clear_saved_credentials,
             codex_install_status,
-            install_codex
+            install_codex,
+            client_setup_status,
+            configure_client
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Hapi desktop client");

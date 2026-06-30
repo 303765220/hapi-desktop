@@ -125,9 +125,8 @@ import {
   ShieldAlert,
   Wallet,
   Activity,
-  BookOpen,
   Bookmark,
-  Download
+  SlidersHorizontal
 } from '@lucide/vue'
 import AnnouncementsModal from '@/components/AnnouncementsModal.vue'
 
@@ -162,8 +161,7 @@ const menuItems = [
   { name: '仪表盘', path: '/', icon: LayoutDashboard },
   { name: '我的订阅', path: '/subscriptions', icon: Bookmark },
   { name: 'API 密钥', path: '/keys', icon: Key },
-  { name: 'API 教程', path: '/tutorial', icon: BookOpen },
-  { name: 'Codex 安装器', path: '/codex-installer', icon: Download },
+  { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal },
   { name: '可用模型', path: '/models', icon: Server },
   { name: '渠道状态', path: '/status', icon: Activity },
   { name: '使用明细', path: '/usage', icon: BarChart3 },
