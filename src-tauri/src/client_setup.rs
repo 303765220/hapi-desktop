@@ -128,6 +128,10 @@ impl ClientSetupPaths {
     fn codex_auth_path(&self) -> PathBuf {
         self.home.join(".codex").join("auth.json")
     }
+
+    fn opencode_auth_path(&self) -> PathBuf {
+        self.home.join(".local").join("share").join("opencode").join("auth.json")
+    }
 }
 
 fn home_dir() -> Option<PathBuf> {
@@ -208,7 +212,8 @@ fn configured_key_for_client(client: ClientSetupClient, paths: &ClientSetupPaths
     match client {
         ClientSetupClient::Codex => read_configured_codex_key(paths).ok().flatten(),
         ClientSetupClient::GeminiCli => read_configured_gemini_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
-        ClientSetupClient::Opencode => read_configured_opencode_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
+        ClientSetupClient::Opencode => read_configured_opencode_key_from_auth(read_optional_text(&paths.opencode_auth_path()).ok().flatten())
+            .or_else(|| read_configured_opencode_key(read_optional_text(&paths.config_path(client)).ok().flatten())),
         ClientSetupClient::Openclaw => read_configured_openclaw_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
         ClientSetupClient::Hermes => read_configured_hermes_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
     }
@@ -286,7 +291,7 @@ fn configure_client_with_paths(
             write_text_file(&config_path, &build_gemini_env_text(read_optional_text(&config_path)?, trimmed_key)?)?;
         }
         ClientSetupClient::Opencode => {
-            write_json_file(&config_path, &build_opencode_config(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
+            configure_opencode(paths, trimmed_key, key_platform)?;
         }
         ClientSetupClient::Openclaw => {
             write_json_file(&config_path, &build_openclaw_config(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
@@ -319,7 +324,7 @@ fn clear_client_config_with_paths(
             write_text_file(&config_path, &clear_gemini_env_text(read_optional_text(&config_path)?)?)?;
         }
         ClientSetupClient::Opencode => {
-            write_json_file(&config_path, &clear_opencode_config(read_optional_text(&config_path)?)?)?;
+            clear_opencode(paths)?;
         }
         ClientSetupClient::Openclaw => {
             write_json_file(&config_path, &clear_openclaw_config(read_optional_text(&config_path)?)?)?;
@@ -569,6 +574,31 @@ fn clear_gemini_env_text(existing: Option<String>) -> Result<String, String> {
     }
 }
 
+fn configure_opencode(
+    paths: &ClientSetupPaths,
+    api_key: &str,
+    key_platform: Option<&str>,
+) -> Result<(), String> {
+    let auth_path = paths.opencode_auth_path();
+    let config_path = paths.config_path(ClientSetupClient::Opencode);
+    let old_auth = read_optional_bytes(&auth_path)?;
+
+    let auth_value = build_opencode_auth(read_optional_text(&auth_path)?, api_key)?;
+    if let Err(err) = write_json_file(&auth_path, &auth_value) {
+        return Err(err);
+    }
+
+    if let Err(err) = write_json_file(
+        &config_path,
+        &build_opencode_config(read_optional_text(&config_path)?, api_key, key_platform)?,
+    ) {
+        restore_optional_file(&auth_path, old_auth)?;
+        return Err(err);
+    }
+
+    Ok(())
+}
+
 fn build_opencode_config(
     existing: Option<String>,
     api_key: &str,
@@ -590,6 +620,16 @@ fn build_opencode_config(
         "models": models
     });
     Ok(config)
+}
+
+fn build_opencode_auth(existing: Option<String>, api_key: &str) -> Result<Value, String> {
+    let mut value = parse_json_or_default(existing, json!({}))?;
+    ensure_object(&mut value);
+    value[HAPI_PROVIDER_ID] = json!({
+        "type": "api",
+        "key": api_key
+    });
+    Ok(value)
 }
 
 fn opencode_models_for_platform(key_platform: Option<&str>) -> Value {
@@ -617,6 +657,33 @@ fn clear_opencode_config(existing: Option<String>) -> Result<Value, String> {
     Ok(config)
 }
 
+fn clear_opencode(paths: &ClientSetupPaths) -> Result<(), String> {
+    let auth_path = paths.opencode_auth_path();
+    let config_path = paths.config_path(ClientSetupClient::Opencode);
+    let old_auth = read_optional_bytes(&auth_path)?;
+    let _ = backup_existing_file(&auth_path)?;
+
+    let auth_value = clear_opencode_auth(read_optional_text(&auth_path)?)?;
+    if let Err(err) = write_json_file(&auth_path, &auth_value) {
+        return Err(err);
+    }
+
+    if let Err(err) = write_json_file(&config_path, &clear_opencode_config(read_optional_text(&config_path)?)?) {
+        restore_optional_file(&auth_path, old_auth)?;
+        return Err(err);
+    }
+
+    Ok(())
+}
+
+fn clear_opencode_auth(existing: Option<String>) -> Result<Value, String> {
+    let mut value = parse_json_or_default(existing, json!({}))?;
+    if let Some(object) = value.as_object_mut() {
+        object.remove(HAPI_PROVIDER_ID);
+    }
+    Ok(value)
+}
+
 fn read_configured_opencode_key(existing: Option<String>) -> Option<String> {
     let config = parse_json_or_default(existing, json!({})).ok()?;
     config
@@ -624,6 +691,16 @@ fn read_configured_opencode_key(existing: Option<String>) -> Option<String> {
         .get(HAPI_PROVIDER_ID)?
         .get("options")?
         .get("apiKey")?
+        .as_str()
+        .map(str::to_string)
+        .filter(|key| !key.trim().is_empty())
+}
+
+fn read_configured_opencode_key_from_auth(existing: Option<String>) -> Option<String> {
+    let config = parse_json_or_default(existing, json!({})).ok()?;
+    config
+        .get(HAPI_PROVIDER_ID)?
+        .get("key")?
         .as_str()
         .map(str::to_string)
         .filter(|key| !key.trim().is_empty())
@@ -908,6 +985,44 @@ base_url = "https://api.openai.com/v1"
         assert_eq!(
             config["provider"]["hapi"]["options"]["baseURL"],
             "https://www.hapi666.com/"
+        );
+    }
+
+    #[test]
+    fn opencode_auth_adds_hapi_api_key_without_dropping_other_credentials() {
+        let existing = r#"{
+          "anthropic": { "type": "api", "key": "keep" }
+        }"#;
+
+        let auth = build_opencode_auth(Some(existing.to_string()), "hapi-key").unwrap();
+
+        assert_eq!(auth["anthropic"]["key"], "keep");
+        assert_eq!(auth["hapi"]["type"], "api");
+        assert_eq!(auth["hapi"]["key"], "hapi-key");
+    }
+
+    #[test]
+    fn clear_opencode_auth_removes_hapi_only() {
+        let existing = r#"{
+          "hapi": { "type": "api", "key": "hapi-key" },
+          "anthropic": { "type": "api", "key": "keep" }
+        }"#;
+
+        let auth = clear_opencode_auth(Some(existing.to_string())).unwrap();
+
+        assert!(auth.get("hapi").is_none());
+        assert_eq!(auth["anthropic"]["key"], "keep");
+    }
+
+    #[test]
+    fn reads_configured_opencode_key_from_auth() {
+        let existing = r#"{
+          "hapi": { "type": "api", "key": "hapi-key" }
+        }"#;
+
+        assert_eq!(
+            read_configured_opencode_key_from_auth(Some(existing.to_string())),
+            Some("hapi-key".to_string())
         );
     }
 
