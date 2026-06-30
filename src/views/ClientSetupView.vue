@@ -142,7 +142,7 @@
             <button
               v-if="item.client === 'codex'"
               @click="handleInstallCodex"
-              class="flex-1 h-10 inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-white transition-all hover:bg-white/10 hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex-1 h-10 inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 sm:px-3 text-sm font-medium text-white transition-all hover:bg-white/10 hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
               :disabled="installingCodex || item.installed"
             >
               <Loader2 v-if="installingCodex" class="mr-2 h-4 w-4 animate-spin" />
@@ -151,8 +151,9 @@
             </button>
 
             <button
+              v-if="!item.configured"
               @click="handleConfigure(item)"
-              class="flex-1 h-10 inline-flex items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 shadow-lg"
+              class="flex-1 h-10 inline-flex items-center justify-center rounded-xl px-2 sm:px-3 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 shadow-lg whitespace-nowrap"
               :class="item.installed ? 'bg-purple-600 hover:bg-purple-500 hover:shadow-purple-500/25' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'"
               :disabled="configuringClient === item.client || !item.installed || !selectedKeys[item.client]"
             >
