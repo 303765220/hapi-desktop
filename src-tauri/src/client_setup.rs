@@ -6,6 +6,8 @@ use std::process::Command;
 use toml_edit::{value, DocumentMut, Item, Table};
 
 pub const HAPI_BASE_URL: &str = "https://www.hapi666.com/api/v1";
+// OpenCode 的 openai-compatible provider 会按自身规则拼接接口路径，写站点根地址可避免把 /api/v1 重复或错位拼到请求里；改回 API v1 会复现“请求已中断”，改成无尾斜杠需重新验证 OpenCode 拼接。用 opencode_config_uses_site_root_base_url 单测锁定。
+const HAPI_OPENCODE_BASE_URL: &str = "https://www.hapi666.com/";
 const HAPI_PROVIDER_ID: &str = "hapi";
 // 默认模型只用于未识别平台的兜底配置，保持 gpt-5 可以让旧的通用客户端仍能发起 OpenAI 兼容请求；改成渠道专属模型会导致未带 platform 的 Key 写入后不可用，删除则会让配置生成缺少 model。用 cargo test client_setup 覆盖默认分支和清理逻辑。
 const DEFAULT_CODE_MODEL: &str = "gpt-5";
@@ -582,7 +584,7 @@ fn build_opencode_config(
         "npm": "@ai-sdk/openai-compatible",
         "name": "Hapi",
         "options": {
-            "baseURL": HAPI_BASE_URL,
+            "baseURL": HAPI_OPENCODE_BASE_URL,
             "apiKey": api_key
         },
         "models": models
@@ -895,8 +897,18 @@ base_url = "https://api.openai.com/v1"
 
         assert_eq!(config["theme"], "dark");
         assert_eq!(config["provider"]["hapi"]["npm"], "@ai-sdk/openai-compatible");
-        assert_eq!(config["provider"]["hapi"]["options"]["baseURL"], HAPI_BASE_URL);
+        assert_eq!(config["provider"]["hapi"]["options"]["baseURL"], HAPI_OPENCODE_BASE_URL);
         assert_eq!(config["provider"]["hapi"]["options"]["apiKey"], "key");
+    }
+
+    #[test]
+    fn opencode_config_uses_site_root_base_url() {
+        let config = build_opencode_config(None, "key", Some("openai")).unwrap();
+
+        assert_eq!(
+            config["provider"]["hapi"]["options"]["baseURL"],
+            "https://www.hapi666.com/"
+        );
     }
 
     #[test]
