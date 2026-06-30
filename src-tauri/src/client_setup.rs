@@ -60,6 +60,7 @@ pub struct ClientSetupStatus {
     name: String,
     installed: bool,
     configured: bool,
+    configured_key: Option<String>,
     command: String,
     config_path: String,
     note: String,
@@ -171,25 +172,36 @@ fn command_exists(command: &str) -> bool {
 }
 
 fn has_hapi_config(client: ClientSetupClient, paths: &ClientSetupPaths) -> bool {
-    match client {
-        ClientSetupClient::Codex => {
-            let config = paths.config_path(client);
-            fs::read_to_string(config)
-                .map(|text| text.contains("[model_providers.hapi]") || text.contains("model_provider = \"hapi\""))
-                .unwrap_or(false)
+    configured_key_for_client(client, paths).is_some()
+        || match client {
+            ClientSetupClient::Codex => {
+                let config = paths.config_path(client);
+                fs::read_to_string(config)
+                    .map(|text| text.contains("[model_providers.hapi]") || text.contains("model_provider = \"hapi\""))
+                    .unwrap_or(false)
+            }
+            ClientSetupClient::GeminiCli => fs::read_to_string(paths.config_path(client))
+                .map(|text| text.contains(HAPI_BASE_URL) && text.contains("GEMINI_API_KEY="))
+                .unwrap_or(false),
+            ClientSetupClient::Opencode => fs::read_to_string(paths.config_path(client))
+                .map(|text| text.contains("\"hapi\"") && text.contains(HAPI_BASE_URL))
+                .unwrap_or(false),
+            ClientSetupClient::Openclaw => fs::read_to_string(paths.config_path(client))
+                .map(|text| text.contains("hapi") && text.contains(HAPI_BASE_URL))
+                .unwrap_or(false),
+            ClientSetupClient::Hermes => fs::read_to_string(paths.config_path(client))
+                .map(|text| text.contains("name: hapi") && text.contains(HAPI_BASE_URL))
+                .unwrap_or(false),
         }
-        ClientSetupClient::GeminiCli => fs::read_to_string(paths.config_path(client))
-            .map(|text| text.contains(HAPI_BASE_URL) && text.contains("GEMINI_API_KEY="))
-            .unwrap_or(false),
-        ClientSetupClient::Opencode => fs::read_to_string(paths.config_path(client))
-            .map(|text| text.contains("\"hapi\"") && text.contains(HAPI_BASE_URL))
-            .unwrap_or(false),
-        ClientSetupClient::Openclaw => fs::read_to_string(paths.config_path(client))
-            .map(|text| text.contains("hapi") && text.contains(HAPI_BASE_URL))
-            .unwrap_or(false),
-        ClientSetupClient::Hermes => fs::read_to_string(paths.config_path(client))
-            .map(|text| text.contains("name: hapi") && text.contains(HAPI_BASE_URL))
-            .unwrap_or(false),
+}
+
+fn configured_key_for_client(client: ClientSetupClient, paths: &ClientSetupPaths) -> Option<String> {
+    match client {
+        ClientSetupClient::Codex => read_configured_codex_key(paths).ok().flatten(),
+        ClientSetupClient::GeminiCli => read_configured_gemini_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
+        ClientSetupClient::Opencode => read_configured_opencode_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
+        ClientSetupClient::Openclaw => read_configured_openclaw_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
+        ClientSetupClient::Hermes => read_configured_hermes_key(read_optional_text(&paths.config_path(client)).ok().flatten()),
     }
 }
 
@@ -207,6 +219,7 @@ pub fn client_setup_status() -> Result<Vec<ClientSetupStatus>, String> {
             let config_path = paths.config_path(client);
             let installed = command_exists(&command) || dir.exists();
             let configured = has_hapi_config(client, &paths);
+            let configured_key = configured_key_for_client(client, &paths);
             let note = if installed {
                 "已检测到客户端，可写入 Hapi 配置。".to_string()
             } else {
@@ -217,6 +230,7 @@ pub fn client_setup_status() -> Result<Vec<ClientSetupStatus>, String> {
                 name: client.display_name().to_string(),
                 installed,
                 configured,
+                configured_key,
                 command,
                 config_path: config_path.to_string_lossy().into_owned(),
                 note,
@@ -386,6 +400,19 @@ fn build_codex_auth(existing: Option<String>, api_key: &str) -> Result<Value, St
     Ok(value)
 }
 
+fn read_configured_codex_key(paths: &ClientSetupPaths) -> Result<Option<String>, String> {
+    let value = match read_optional_text(&paths.codex_auth_path())? {
+        Some(text) if !text.trim().is_empty() => serde_json::from_str::<Value>(&text)
+            .map_err(|err| format!("解析 Codex auth.json 失败: {err}"))?,
+        _ => return Ok(None),
+    };
+    Ok(value
+        .get("OPENAI_API_KEY")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .filter(|key| !key.trim().is_empty()))
+}
+
 fn clear_codex_auth(existing: Option<String>) -> Result<Value, String> {
     let mut value = match existing {
         Some(text) if !text.trim().is_empty() => serde_json::from_str::<Value>(&text)
@@ -502,6 +529,15 @@ fn build_gemini_env_text(existing: Option<String>, api_key: &str) -> Result<Stri
     Ok(format!("{}\n", lines.join("\n")))
 }
 
+fn read_configured_gemini_key(existing: Option<String>) -> Option<String> {
+    existing?
+        .lines()
+        .find_map(|line| line.trim_start().strip_prefix("GEMINI_API_KEY="))
+        .map(str::trim)
+        .map(str::to_string)
+        .filter(|key| !key.is_empty())
+}
+
 fn clear_gemini_env_text(existing: Option<String>) -> Result<String, String> {
     let Some(existing) = existing else {
         return Ok(String::new());
@@ -570,6 +606,18 @@ fn clear_opencode_config(existing: Option<String>) -> Result<Value, String> {
     Ok(config)
 }
 
+fn read_configured_opencode_key(existing: Option<String>) -> Option<String> {
+    let config = parse_json_or_default(existing, json!({})).ok()?;
+    config
+        .get("provider")?
+        .get(HAPI_PROVIDER_ID)?
+        .get("options")?
+        .get("apiKey")?
+        .as_str()
+        .map(str::to_string)
+        .filter(|key| !key.trim().is_empty())
+}
+
 fn build_openclaw_config(existing: Option<String>, api_key: &str) -> Result<Value, String> {
     let mut config = parse_json_or_default(existing, json!({ "models": { "mode": "merge", "providers": {} } }))?;
     ensure_object(&mut config);
@@ -606,6 +654,18 @@ fn clear_openclaw_config(existing: Option<String>) -> Result<Value, String> {
         providers.remove(HAPI_PROVIDER_ID);
     }
     Ok(config)
+}
+
+fn read_configured_openclaw_key(existing: Option<String>) -> Option<String> {
+    let config = parse_json_or_default(existing, json!({})).ok()?;
+    config
+        .get("models")?
+        .get("providers")?
+        .get(HAPI_PROVIDER_ID)?
+        .get("apiKey")?
+        .as_str()
+        .map(str::to_string)
+        .filter(|key| !key.trim().is_empty())
 }
 
 fn build_hermes_yaml_text(existing: Option<String>, api_key: &str) -> Result<String, String> {
@@ -670,6 +730,20 @@ fn clear_hermes_yaml_text(existing: Option<String>) -> Result<String, String> {
     }
 
     serde_yaml::to_string(&config).map_err(|err| format!("序列化 Hermes config.yaml 失败: {err}"))
+}
+
+fn read_configured_hermes_key(existing: Option<String>) -> Option<String> {
+    let text = existing?;
+    let config = serde_yaml::from_str::<serde_yaml::Value>(&text).ok()?;
+    config
+        .get("custom_providers")?
+        .as_sequence()?
+        .iter()
+        .find(|item| item.get("name").and_then(serde_yaml::Value::as_str) == Some(HAPI_PROVIDER_ID))?
+        .get("api_key")?
+        .as_str()
+        .map(str::to_string)
+        .filter(|key| !key.trim().is_empty())
 }
 
 fn parse_json_or_default(existing: Option<String>, default_value: Value) -> Result<Value, String> {
@@ -866,6 +940,41 @@ custom_providers:
         }"#.to_string())).unwrap();
         assert!(openclaw["models"]["providers"].get("hapi").is_none());
         assert_eq!(openclaw["models"]["providers"]["other"]["baseUrl"], "https://example.com");
+    }
+
+    #[test]
+    fn reads_configured_hapi_keys_from_client_configs() {
+        assert_eq!(
+            read_configured_gemini_key(Some("GEMINI_API_KEY=gemini-key\n".to_string())),
+            Some("gemini-key".to_string())
+        );
+        assert_eq!(
+            read_configured_opencode_key(Some(r#"{
+              "provider": {
+                "hapi": {
+                  "options": { "apiKey": "opencode-key" }
+                }
+              }
+            }"#.to_string())),
+            Some("opencode-key".to_string())
+        );
+        assert_eq!(
+            read_configured_openclaw_key(Some(r#"{
+              "models": {
+                "providers": {
+                  "hapi": { "apiKey": "openclaw-key" }
+                }
+              }
+            }"#.to_string())),
+            Some("openclaw-key".to_string())
+        );
+        assert_eq!(
+            read_configured_hermes_key(Some(r#"custom_providers:
+- name: hapi
+  api_key: hermes-key
+"#.to_string())),
+            Some("hermes-key".to_string())
+        );
     }
 
     #[test]

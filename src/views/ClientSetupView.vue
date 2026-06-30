@@ -279,19 +279,32 @@ const setSelectedKey = (client: ClientSetupClient, key: string) => {
   }
 }
 
+const syncConfiguredKeys = () => {
+  const nextSelected = { ...selectedKeys.value }
+  for (const item of statuses.value) {
+    if (!item.configured || !item.configuredKey) {
+      continue
+    }
+    const available = availableKeysForClient(item.client)
+    if (available.some((key) => key.key === item.configuredKey)) {
+      nextSelected[item.client] = item.configuredKey
+    }
+  }
+  for (const client of Object.keys(nextSelected) as ClientSetupClient[]) {
+    const available = availableKeysForClient(client)
+    if (nextSelected[client] && !available.some((key) => key.key === nextSelected[client])) {
+      delete nextSelected[client]
+    }
+  }
+  selectedKeys.value = nextSelected
+}
+
 const loadKeys = async () => {
   keysLoading.value = true
   try {
     const response = await keysAPI.list(1, 100, { status: 'active' })
     apiKeys.value = response.items || []
-    const nextSelected = { ...selectedKeys.value }
-    for (const client of Object.keys(nextSelected) as ClientSetupClient[]) {
-      const available = availableKeysForClient(client)
-      if (nextSelected[client] && !available.some((key) => key.key === nextSelected[client])) {
-        delete nextSelected[client]
-      }
-    }
-    selectedKeys.value = nextSelected
+    syncConfiguredKeys()
   } catch (err) {
     pageError.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -304,6 +317,7 @@ const loadStatuses = async () => {
   statusLoading.value = true
   try {
     statuses.value = await loadClientSetupStatus()
+    syncConfiguredKeys()
   } catch (err) {
     pageError.value = err instanceof Error ? err.message : String(err)
   } finally {

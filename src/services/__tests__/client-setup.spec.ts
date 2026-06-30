@@ -17,6 +17,7 @@ describe('client setup service', () => {
       name: 'Codex',
       installed: true,
       configured: false,
+      configuredKey: null,
       command: 'codex',
       configPath: '/Users/demo/.codex/config.toml',
       note: '已检测到客户端，可写入 Hapi 配置。',

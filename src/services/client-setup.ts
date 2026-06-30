@@ -9,6 +9,7 @@ export interface ClientSetupStatus {
   name: string
   installed: boolean
   configured: boolean
+  configuredKey: string | null
   command: string
   configPath: string
   note: string
