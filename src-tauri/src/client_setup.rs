@@ -9,8 +9,16 @@ pub const HAPI_BASE_URL: &str = "https://www.hapi666.com/api/v1";
 // OpenCode 的 openai-compatible provider 会按自身规则拼接接口路径，写站点根地址可避免把 /api/v1 重复或错位拼到请求里；改回 API v1 会复现“请求已中断”，改成无尾斜杠需重新验证 OpenCode 拼接。用 opencode_config_uses_site_root_base_url 单测锁定。
 const HAPI_OPENCODE_BASE_URL: &str = "https://www.hapi666.com/";
 const HAPI_PROVIDER_ID: &str = "hapi";
-// 默认模型只用于未识别平台的兜底配置，保持 gpt-5 可以让旧的通用客户端仍能发起 OpenAI 兼容请求；改成渠道专属模型会导致未带 platform 的 Key 写入后不可用，删除则会让配置生成缺少 model。用 cargo test client_setup 覆盖默认分支和清理逻辑。
+// 默认模型用于 Codex 和通用列表首项，保持 gpt-5 可以让旧的通用客户端仍能发起 OpenAI 兼容请求；改成渠道专属模型会导致未带 platform 的 Key 写入后不可用，删除则会让配置生成缺少 model。用 cargo test client_setup 覆盖默认分支和清理逻辑。
 const DEFAULT_CODE_MODEL: &str = "gpt-5";
+// 未识别或不限平台的 Key 写入 OpenCode/OpenClaw/Hermes 时使用通用模型列表；新增模型必须先确认站点已支持，否则客户端会配置成功但调用失败。减少会让通用 Key 看不到可用模型，调整顺序会影响 Hermes 默认 model。用 general_models 单测验证三类客户端输出。
+const GENERAL_CODE_MODELS: &[&str] = &[
+    DEFAULT_CODE_MODEL,
+    "DeepSeek-v4-pro",
+    "DeepSeek-v4-flash",
+    "glm-5.2",
+    "kimi-2.7",
+];
 // Gemini CLI 只能写一个 GEMINI_MODEL，默认取当前 Gemini 支持列表的首个稳定入口；改低会回到旧模型，改高或删除会让 CLI 配置缺少可直接使用的模型。用 gemini_env_* 单测验证写入值。
 const DEFAULT_GEMINI_MODEL: &str = "gemini-3.1-pro-preview";
 // OpenAI 分组写入 OpenCode/OpenClaw/Hermes 时暴露本站支持的 GPT 入口；减少会让用户在客户端不可选对应模型，增加未支持模型会造成运行时报错。用 opencode_config_adds_gpt_models_for_openai_key 验证列表。
@@ -668,7 +676,7 @@ fn code_models_for_platform(key_platform: Option<&str>) -> &'static [&'static st
         Some("openai") => OPENCODE_GPT_MODELS,
         Some("anthropic") => CLAUDE_CODE_MODELS,
         Some("gemini") => GEMINI_MODELS,
-        _ => &[DEFAULT_CODE_MODEL],
+        _ => GENERAL_CODE_MODELS,
     }
 }
 
@@ -1114,6 +1122,17 @@ base_url = "https://api.openai.com/v1"
     }
 
     #[test]
+    fn opencode_config_adds_general_models_for_unrestricted_key() {
+        let config = build_opencode_config(None, "key", None).unwrap();
+        let provider_id = opencode_provider_id("key");
+
+        assert_eq!(config["provider"][&provider_id]["models"]["DeepSeek-v4-pro"]["name"], "DeepSeek-v4-pro");
+        assert_eq!(config["provider"][&provider_id]["models"]["DeepSeek-v4-flash"]["name"], "DeepSeek-v4-flash");
+        assert_eq!(config["provider"][&provider_id]["models"]["glm-5.2"]["name"], "glm-5.2");
+        assert_eq!(config["provider"][&provider_id]["models"]["kimi-2.7"]["name"], "kimi-2.7");
+    }
+
+    #[test]
     fn gemini_env_uses_current_supported_default_model() {
         let text = build_gemini_env_text(None, "new-key").unwrap();
 
@@ -1142,12 +1161,37 @@ base_url = "https://api.openai.com/v1"
     }
 
     #[test]
+    fn openclaw_config_adds_general_models_for_unrestricted_key() {
+        let config = build_openclaw_config(None, "key", None).unwrap();
+        let models = config["models"]["providers"]["hapi"]["models"].as_array().unwrap();
+        let ids = models
+            .iter()
+            .filter_map(|item| item.get("id").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+
+        assert!(ids.contains(&"DeepSeek-v4-pro"));
+        assert!(ids.contains(&"DeepSeek-v4-flash"));
+        assert!(ids.contains(&"glm-5.2"));
+        assert!(ids.contains(&"kimi-2.7"));
+    }
+
+    #[test]
     fn hermes_yaml_adds_gemini_models_for_gemini_key() {
         let text = build_hermes_yaml_text(None, "key", Some("gemini")).unwrap();
 
         assert!(text.contains("model: gemini-3.1-pro-preview"));
         assert!(text.contains("gemini-3.1-pro-preview:"));
         assert!(text.contains("gemini-3.5-flash:"));
+    }
+
+    #[test]
+    fn hermes_yaml_adds_general_models_for_unrestricted_key() {
+        let text = build_hermes_yaml_text(None, "key", None).unwrap();
+
+        assert!(text.contains("DeepSeek-v4-pro:"));
+        assert!(text.contains("DeepSeek-v4-flash:"));
+        assert!(text.contains("glm-5.2:"));
+        assert!(text.contains("kimi-2.7:"));
     }
 
     #[test]
