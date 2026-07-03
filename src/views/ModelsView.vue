@@ -110,7 +110,7 @@ const models = ref<any[]>([
   { id: 6, name: 'gpt-5.4-mini', platform: 'OpenAI', pricing: { input_price: 0.15, output_price: 0.6, cache_read_price: 0.075 } },
   { id: 7, name: 'DeepSeek-v4-pro', platform: 'DeepSeek', pricing: { input_price: 3.0, output_price: 6.0, cache_read_price: 0.025 } },
   { id: 8, name: 'DeepSeek-v4-flash', platform: 'DeepSeek', pricing: { input_price: 1.0, output_price: 2.0, cache_read_price: 0.02 } },
-  { id: 9, name: 'glm-5.2', platform: 'Zhipu', pricing: { input_price: 1.4, output_price: 4.4, cache_read_price: 0.26 } },
+  { id: 9, name: 'glm-5.2', platform: 'Zhipu', pricing: { input_price: 8.0, output_price: 28.0, cache_read_price: 2.0 } },
   { id: 10, name: 'kimi-2.7', platform: 'Moonshot', pricing: { input_price: 0.95, output_price: 4.0, cache_read_price: 0.19 } }
 ])
 

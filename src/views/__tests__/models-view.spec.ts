@@ -13,7 +13,7 @@ describe('available models view', () => {
     expect(source).toContain("name: 'kimi-2.7'")
     expect(source).toContain("input_price: 3.0, output_price: 6.0, cache_read_price: 0.025")
     expect(source).toContain("input_price: 1.0, output_price: 2.0, cache_read_price: 0.02")
-    expect(source).toContain("input_price: 1.4, output_price: 4.4, cache_read_price: 0.26")
+    expect(source).toContain("input_price: 8.0, output_price: 28.0, cache_read_price: 2.0")
     expect(source).toContain("input_price: 0.95, output_price: 4.0, cache_read_price: 0.19")
   })
 })
