@@ -11,5 +11,7 @@ describe('available models view', () => {
     expect(source).toContain("name: 'DeepSeek-v4-flash'")
     expect(source).toContain("name: 'glm-5.2'")
     expect(source).toContain("name: 'kimi-2.7'")
+    expect(source).toContain("input_price: 1.4, output_price: 4.4, cache_read_price: 0.26")
+    expect(source).toContain("input_price: 0.95, output_price: 4.0, cache_read_price: 0.19")
   })
 })
