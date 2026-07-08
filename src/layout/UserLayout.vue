@@ -64,15 +64,6 @@
             ¥{{ (user?.balance || 0).toLocaleString() }}
           </router-link>
 
-          <router-link 
-            v-if="user?.role === 'admin'"
-            to="/admin" 
-            class="hidden md:flex items-center text-sm font-medium text-purple-400 hover:text-purple-300 transition ml-2"
-          >
-            <ShieldAlert class="w-4 h-4 mr-1.5" />
-            管理员面板
-          </router-link>
-
           <button 
             @click="announcementStore.openModal()"
             class="relative p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition text-zinc-300 ml-2"
@@ -122,7 +113,6 @@ import {
   User as UserIcon,
   Bell as BellIcon,
   Users,
-  ShieldAlert,
   Wallet,
   Activity,
   Bookmark,

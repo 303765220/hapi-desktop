@@ -17,53 +17,6 @@ const router = createRouter({
       component: () => import('@/views/auth/LoginView.vue')
     },
     {
-      path: '/admin',
-      component: () => import('@/layout/AdminLayout.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
-      children: [
-        {
-          path: '',
-          name: 'AdminDashboard',
-          component: () => import('@/views/admin/DashboardView.vue'),
-        },
-        {
-          path: 'users',
-          name: 'AdminUsers',
-          component: () => import('@/views/admin/UsersView.vue'),
-        },
-        {
-          path: 'channels',
-          name: 'AdminChannels',
-          component: () => import('@/views/admin/ChannelsView.vue'),
-        },
-        {
-          path: 'groups',
-          name: 'AdminGroups',
-          component: () => import('@/views/admin/GroupsView.vue'),
-        },
-        {
-          path: 'risk',
-          name: 'AdminRiskControl',
-          component: () => import('@/views/admin/RiskControlView.vue'),
-        },
-        {
-          path: 'settings',
-          name: 'AdminSettings',
-          component: () => import('@/views/admin/SettingsView.vue'),
-        },
-        {
-          path: 'redeem',
-          name: 'AdminRedeem',
-          component: () => import('@/views/admin/RedeemView.vue'),
-        },
-        {
-          path: 'usage',
-          name: 'AdminUsage',
-          component: () => import('@/views/admin/UsageView.vue'),
-        }
-      ]
-    },
-    {
       path: '/',
       component: UserLayout,
       meta: { requiresAuth: true },
