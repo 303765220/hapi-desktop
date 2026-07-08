@@ -166,12 +166,12 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
-              <th v-for="i in 6" :key="i" class="px-6 py-4"><div class="h-4 bg-white/10 rounded w-16"></div></th>
+              <th v-for="i in 7" :key="i" class="px-6 py-4"><div class="h-4 bg-white/10 rounded w-16"></div></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
             <tr v-for="i in 5" :key="i" class="animate-pulse">
-              <td v-for="j in 6" :key="j" class="px-6 py-4">
+              <td v-for="j in 7" :key="j" class="px-6 py-4">
                 <div class="h-4 bg-white/5 rounded" :class="j === 3 ? 'w-32' : 'w-24'"></div>
                 <div v-if="j === 3 || j === 4 || j === 5" class="h-3 bg-white/5 rounded w-16 mt-2"></div>
               </td>
@@ -188,12 +188,13 @@
         <p class="text-zinc-400 mb-6">No requests found in this time period.</p>
       </div>
 
-      <div v-else class="w-full">
-        <table class="w-full text-left border-collapse">
+      <div v-else class="w-full overflow-x-auto">
+        <table class="w-full min-w-[980px] text-left border-collapse">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">时间 (北京时间)</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">模型</th>
+              <th class="px-6 py-4 text-sm font-medium text-zinc-400">分组</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">Tokens</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">倍率/类型</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">耗时</th>
@@ -207,6 +208,11 @@
               </td>
               <td class="px-6 py-4 text-sm text-white font-medium">
                 {{ log.model || 'N/A' }}
+              </td>
+              <td class="px-6 py-4 text-sm">
+                <span class="inline-flex max-w-[160px] items-center rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-zinc-300">
+                  <span class="truncate">{{ formatUsageGroup(log) }}</span>
+                </span>
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col">
@@ -327,6 +333,7 @@ import { ref, onMounted, computed } from 'vue'
 import { Activity, Info, ArrowDownToLine, ArrowUpFromLine, Calendar, Key, ChevronDown, FileText, Box, DollarSign, Timer } from '@lucide/vue'
 import { list as getUsageLogs, getStatsByDateRange } from '@/api/usage'
 import { list as getKeysList } from '@/api/keys'
+import { formatUsageGroup } from '@/utils/usageGroup'
 
 const logs = ref<any[]>([])
 const loading = ref(true)
