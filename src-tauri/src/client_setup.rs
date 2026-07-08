@@ -59,14 +59,8 @@ impl ClientSetupClient {
         }
     }
 
-    fn all() -> [ClientSetupClient; 5] {
-        [
-            ClientSetupClient::GeminiCli,
-            ClientSetupClient::Codex,
-            ClientSetupClient::Opencode,
-            ClientSetupClient::Openclaw,
-            ClientSetupClient::Hermes,
-        ]
+    fn all() -> [ClientSetupClient; 1] {
+        [ClientSetupClient::Codex]
     }
 }
 

@@ -1,8 +1,8 @@
 import { isTauriDesktop } from '@/utils/desktop-env'
 import type { ApiKey, GroupPlatform } from '@/types'
 
-export type ClientSetupClient = 'geminiCli' | 'codex' | 'opencode' | 'openclaw' | 'hermes'
-type ClientKeyPlatform = Extract<GroupPlatform, 'openai' | 'gemini'>
+export type ClientSetupClient = 'codex'
+type ClientKeyPlatform = Extract<GroupPlatform, 'openai'>
 
 export interface ClientSetupStatus {
   client: ClientSetupClient
@@ -39,7 +39,8 @@ export async function loadClientSetupStatus(
     return []
   }
 
-  return invoke<ClientSetupStatus[]>('client_setup_status')
+  const statuses = await invoke<Array<Omit<ClientSetupStatus, 'client'> & { client: string }>>('client_setup_status')
+  return statuses.filter((status): status is ClientSetupStatus => status.client === 'codex')
 }
 
 export async function configureClient(
@@ -79,9 +80,6 @@ export async function clearClientConfig(
 export function requiredPlatformForClient(client: ClientSetupClient): ClientKeyPlatform | null {
   if (client === 'codex') {
     return 'openai'
-  }
-  if (client === 'geminiCli') {
-    return 'gemini'
   }
   return null
 }

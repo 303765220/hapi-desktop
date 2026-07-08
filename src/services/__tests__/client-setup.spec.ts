@@ -43,7 +43,20 @@ describe('client setup service', () => {
   })
 
   it('loads desktop client setup status through Tauri', async () => {
-    const invoke = vi.fn().mockResolvedValue(status)
+    const invoke = vi.fn().mockResolvedValue([
+      ...status,
+      {
+        client: 'opencode',
+        name: 'OpenCode',
+        installed: true,
+        configured: false,
+        configuredKey: null,
+        configuredKeys: [],
+        command: 'opencode',
+        configPath: '/Users/demo/.config/opencode/opencode.json',
+        note: '历史客户端不应再出现在一键配置页面。',
+      },
+    ])
 
     await expect(loadClientSetupStatus(true, invoke)).resolves.toEqual(status)
     expect(invoke).toHaveBeenCalledWith('client_setup_status')
@@ -60,17 +73,6 @@ describe('client setup service', () => {
     })
   })
 
-  it('passes anthropic key platform to desktop setup', async () => {
-    const invoke = vi.fn().mockResolvedValue(result)
-
-    await expect(configureClient('opencode', 'sk-claude', 'anthropic', true, invoke)).resolves.toEqual(result)
-    expect(invoke).toHaveBeenCalledWith('configure_client', {
-      client: 'opencode',
-      apiKey: 'sk-claude',
-      keyPlatform: 'anthropic',
-    })
-  })
-
   it('clears a desktop client config through Tauri', async () => {
     const invoke = vi.fn().mockResolvedValue(result)
 
@@ -81,17 +83,7 @@ describe('client setup service', () => {
     })
   })
 
-  it('passes selected key when clearing a desktop client config', async () => {
-    const invoke = vi.fn().mockResolvedValue(result)
-
-    await expect(clearClientConfig('opencode', 'sk-test', true, invoke)).resolves.toEqual(result)
-    expect(invoke).toHaveBeenCalledWith('clear_client_config', {
-      client: 'opencode',
-      apiKey: 'sk-test',
-    })
-  })
-
-  it('restricts Codex and Gemini keys to their matching platforms', () => {
+  it('restricts Codex keys to OpenAI platform', () => {
     const keys = [
       { id: 1, key: 'openai-key', status: 'active', group: { platform: 'openai' } },
       { id: 2, key: 'gemini-key', status: 'active', group: { platform: 'gemini' } },
@@ -100,14 +92,6 @@ describe('client setup service', () => {
     ] as any
 
     expect(requiredPlatformForClient('codex')).toBe('openai')
-    expect(requiredPlatformForClient('geminiCli')).toBe('gemini')
-    expect(requiredPlatformForClient('opencode')).toBeNull()
     expect(filterApiKeysForClient(keys, 'codex').map((key) => key.key)).toEqual(['openai-key'])
-    expect(filterApiKeysForClient(keys, 'geminiCli').map((key) => key.key)).toEqual(['gemini-key'])
-    expect(filterApiKeysForClient(keys, 'openclaw').map((key) => key.key)).toEqual([
-      'openai-key',
-      'gemini-key',
-      'anthropic-key',
-    ])
   })
 })

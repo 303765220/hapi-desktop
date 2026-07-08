@@ -58,7 +58,7 @@
 
       <!-- Loading Skeletons -->
       <div v-if="statusLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="i in 6" :key="i" class="h-[280px] rounded-2xl border border-white/5 bg-white/5 animate-pulse"></div>
+        <div v-for="i in 1" :key="i" class="h-[280px] rounded-2xl border border-white/5 bg-white/5 animate-pulse"></div>
       </div>
 
       <!-- Client Grid Cards -->
@@ -183,14 +183,11 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   Bot,
-  Code2,
   Download,
-  Feather,
   Loader2,
   MonitorDown,
   RefreshCw,
   Settings2,
-  Sparkles,
   TerminalSquare,
   Key,
   ChevronDown,
@@ -233,22 +230,14 @@ const formatKey = (key: string) => {
 
 const clientIcon = (client: ClientSetupClient) => {
   const icons: Record<ClientSetupClient, unknown> = {
-    geminiCli: Sparkles,
     codex: Bot,
-    opencode: Code2,
-    openclaw: Wand2,
-    hermes: Feather,
   }
   return icons[client]
 }
 
 const clientTheme = (client: ClientSetupClient) => {
   const themes: Record<ClientSetupClient, { bg: string, text: string }> = {
-    geminiCli: { bg: 'bg-blue-500/10', text: 'text-blue-400' },
     codex: { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
-    opencode: { bg: 'bg-indigo-500/10', text: 'text-indigo-400' },
-    openclaw: { bg: 'bg-amber-500/10', text: 'text-amber-400' },
-    hermes: { bg: 'bg-orange-500/10', text: 'text-orange-400' },
   }
   return themes[client] || { bg: 'bg-purple-500/10', text: 'text-purple-400' }
 }
@@ -258,7 +247,6 @@ const availableKeysForClient = (client: ClientSetupClient) => filterApiKeysForCl
 const keyPickerLabel = (client: ClientSetupClient) => {
   const platform = requiredPlatformForClient(client)
   if (platform === 'openai') return '选择 OpenAI 分组 Key'
-  if (platform === 'gemini') return '选择 Gemini 分组 Key'
   return '选择任意 active Key'
 }
 
@@ -269,7 +257,6 @@ const keySelectLabel = (client: ClientSetupClient) => {
   if (count > 0) return '请选择，不自动默认'
   const platform = requiredPlatformForClient(client)
   if (platform === 'openai') return '暂无 OpenAI 分组 active Key'
-  if (platform === 'gemini') return '暂无 Gemini 分组 active Key'
   return '暂无可用 active API Key'
 }
 
@@ -280,24 +267,11 @@ const setSelectedKey = (client: ClientSetupClient, key: string) => {
   }
 }
 
-const configuredKeysForItem = (item: ClientSetupStatus) => item.configuredKeys || (item.configuredKey ? [item.configuredKey] : [])
-
-const selectedKeyConfigured = (item: ClientSetupStatus) => {
-  const selectedKey = selectedKeys.value[item.client]
-  return !!selectedKey && configuredKeysForItem(item).includes(selectedKey)
-}
-
 const canWriteConfig = (item: ClientSetupStatus) => {
-  if (item.client === 'opencode') {
-    return !selectedKeyConfigured(item)
-  }
   return !item.configured
 }
 
 const canClearConfig = (item: ClientSetupStatus) => {
-  if (item.client === 'opencode') {
-    return selectedKeyConfigured(item)
-  }
   return item.configured
 }
 
@@ -391,11 +365,10 @@ const handleConfigure = async (item: ClientSetupStatus) => {
 }
 
 const handleClearConfig = async (item: ClientSetupStatus) => {
-  const apiKey = item.client === 'opencode' ? selectedKeys.value[item.client] || null : null
   configuringClient.value = item.client
   pageError.value = ''
   try {
-    await clearClientConfig(item.client, apiKey)
+    await clearClientConfig(item.client, null)
     message.success('Hapi 配置已清除')
     await loadStatuses()
   } catch (err) {
