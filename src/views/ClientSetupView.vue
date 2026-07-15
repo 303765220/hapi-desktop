@@ -3,38 +3,6 @@
     <!-- Ambient Background Glow -->
     <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3 z-0"></div>
 
-    <!-- Header Section -->
-    <div class="relative z-10 glass-panel p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-6 overflow-hidden">
-      <!-- Decorative background inside header -->
-      <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-transparent pointer-events-none"></div>
-
-      <div class="relative z-10">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-            <Wand2 class="w-6 h-6" />
-          </div>
-          <h2 class="text-3xl font-bold text-white tracking-tight">一键配置</h2>
-        </div>
-        <p class="text-zinc-400 max-w-xl leading-relaxed">
-          把 Hapi API Key 写入本机客户端配置，告别繁琐的手动复制粘贴。
-          <span class="text-purple-400/80">Codex 支持自动安装和配置。</span>
-        </p>
-      </div>
-
-      <div class="relative z-10 flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-        <button
-          v-if="isDesktop"
-          @click="refreshAll"
-          class="h-12 inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 px-6 text-sm font-medium text-white transition-all hover:bg-white/10 hover:border-purple-500/30 disabled:opacity-50 group shadow-sm shadow-black/50"
-          :disabled="statusLoading || keysLoading"
-        >
-          <Loader2 v-if="statusLoading || keysLoading" class="mr-2 h-4 w-4 animate-spin" />
-          <RefreshCw v-else class="mr-2 h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
-          重新检测
-        </button>
-      </div>
-    </div>
-
     <!-- Desktop Required Warning -->
     <div v-if="!isDesktop" class="relative z-10 glass-panel p-8 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
       <div class="flex flex-col items-center text-center max-w-lg mx-auto py-8">
@@ -51,6 +19,18 @@
 
     <!-- Main Content -->
     <div v-else class="relative z-10 space-y-6">
+      <div class="flex justify-end">
+        <button
+          @click="refreshAll"
+          class="h-10 inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 px-4 text-sm font-medium text-white transition-all hover:bg-white/10 hover:border-purple-500/30 disabled:opacity-50 group shadow-sm shadow-black/50"
+          :disabled="statusLoading || keysLoading"
+        >
+          <Loader2 v-if="statusLoading || keysLoading" class="mr-2 h-4 w-4 animate-spin" />
+          <RefreshCw v-else class="mr-2 h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+          重新检测
+        </button>
+      </div>
+
       <div v-if="pageError" class="rounded-xl border border-red-500/20 bg-red-500/10 px-6 py-4 flex items-center gap-3 text-red-300">
         <div class="p-1 bg-red-500/20 rounded-full"><X class="w-4 h-4" /></div>
         <span class="text-sm font-medium">{{ pageError }}</span>
@@ -192,7 +172,6 @@ import {
   Key,
   ChevronDown,
   X,
-  Wand2,
 } from '@lucide/vue'
 import keysAPI from '@/api/keys'
 import type { ApiKey } from '@/types'
