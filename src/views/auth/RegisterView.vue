@@ -1,79 +1,62 @@
 <template>
   <div class="min-h-screen w-full flex bg-[#09090b]">
-    <!-- Left Side: Branding / Graphic -->
     <div class="hidden lg:flex lg:w-1/2 relative bg-zinc-950/50 overflow-hidden items-center justify-center border-r border-white/5">
-      <!-- Cool ambient glowing orbs -->
       <div class="absolute top-0 left-0 w-full h-full">
         <div class="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[100px] mix-blend-screen animate-blob"></div>
         <div class="absolute top-[30%] right-[20%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] mix-blend-screen animate-blob animation-delay-2000"></div>
         <div class="absolute bottom-[20%] left-[30%] w-[600px] h-[600px] bg-fuchsia-600/20 rounded-full blur-[100px] mix-blend-screen animate-blob animation-delay-4000"></div>
       </div>
-      
-      <!-- Brand Text -->
+
       <div class="relative z-10 p-12 text-center">
         <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.3)] mb-8 border border-white/10">
           <span class="font-bold text-white text-4xl tracking-tighter">H</span>
         </div>
         <h1 class="text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-6 leading-tight">
-          探索无限可能 <br/>
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">Hapi 统一分发平台</span>
+          开始使用 Hapi <br/>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">统一 AI 接口入口</span>
         </h1>
         <p class="text-lg text-zinc-400 max-w-md mx-auto leading-relaxed">
-          最先进、优雅且安全的控制台，一站式管理您的 AI 模型、接口密钥与订阅配置。
+          创建账号后即可管理 API 密钥、查看用量，并配置常用客户端。
         </p>
       </div>
 
-      <!-- Glassmorphism decorative grid -->
       <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none"></div>
-      
-      <!-- Bottom decorative cards -->
-      <div class="absolute -bottom-24 left-1/2 -translate-x-1/2 flex gap-6 pointer-events-none opacity-30 w-[120%] justify-center">
-        <div class="h-48 w-64 glass-panel rounded-2xl border border-white/10 transform -rotate-6 translate-y-12 shadow-2xl"></div>
-        <div class="h-64 w-80 glass-panel rounded-2xl border border-white/10 transform -translate-y-4 shadow-2xl"></div>
-        <div class="h-48 w-64 glass-panel rounded-2xl border border-white/10 transform rotate-6 translate-y-16 shadow-2xl"></div>
-      </div>
     </div>
 
-    <!-- Right Side: Login Form -->
     <div class="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-24 relative bg-[#09090b]">
-      <!-- Ambient glow for mobile when left side is hidden -->
       <div class="lg:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-      
+
       <div class="w-full max-w-[420px] relative z-10">
         <div class="lg:hidden w-12 h-12 mb-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
           <span class="font-bold text-white text-2xl">H</span>
         </div>
-        
-        <h2 class="text-3xl font-bold text-white mb-2 tracking-tight">欢迎回来</h2>
-        <p class="text-zinc-400 mb-10 text-sm">请输入您的凭据以登录到控制台。</p>
 
-        <form @submit.prevent="handleLogin" class="space-y-6">
+        <h2 class="text-3xl font-bold text-white mb-2 tracking-tight">创建账号</h2>
+        <p class="text-zinc-400 mb-10 text-sm">填写邮箱和密码，注册后将自动进入控制台。</p>
+
+        <form @submit.prevent="handleRegister" class="space-y-5">
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-zinc-300">邮箱 / 用户名</label>
-            <div class="relative">
-              <input 
-                v-model="email" 
-                type="text" 
-                required
-                autocomplete="username"
-                class="w-full bg-zinc-900/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/80 transition-all hover:bg-zinc-900"
-                placeholder="请输入邮箱或用户名"
-              />
-            </div>
+            <label class="block text-sm font-medium text-zinc-300">邮箱</label>
+            <input
+              v-model="email"
+              type="email"
+              required
+              autocomplete="email"
+              class="w-full bg-zinc-900/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/80 transition-all hover:bg-zinc-900"
+              placeholder="请输入邮箱"
+            />
           </div>
-          
+
           <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="block text-sm font-medium text-zinc-300">密码</label>
-            </div>
+            <label class="block text-sm font-medium text-zinc-300">密码</label>
             <div class="relative">
-              <input 
-                v-model="password" 
+              <input
+                v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 required
-                autocomplete="current-password"
+                autocomplete="new-password"
                 class="w-full bg-zinc-900/50 border border-white/10 rounded-xl px-4 py-3.5 pr-12 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/80 transition-all hover:bg-zinc-900"
-                placeholder="••••••••"
+                placeholder="至少 6 位"
               />
               <button
                 type="button"
@@ -88,35 +71,46 @@
             </div>
           </div>
 
-          <label v-if="isDesktop" class="flex items-center justify-between gap-4 text-sm text-zinc-400">
-            <span class="flex items-center gap-2">
-              <input
-                v-model="rememberPassword"
-                type="checkbox"
-                class="h-4 w-4 rounded border-white/10 bg-zinc-900 text-purple-500 focus:ring-purple-500/50"
-              />
-              记住密码
-            </span>
-            <span class="text-xs text-zinc-600">保存到本机</span>
-          </label>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-zinc-300">确认密码</label>
+            <input
+              v-model="confirmPassword"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              autocomplete="new-password"
+              class="w-full bg-zinc-900/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/80 transition-all hover:bg-zinc-900"
+              placeholder="请再次输入密码"
+            />
+          </div>
 
-          <button 
-            type="submit" 
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-zinc-300">邀请码（可选）</label>
+            <input
+              v-model="invitationCode"
+              type="text"
+              autocomplete="off"
+              class="w-full bg-zinc-900/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/80 transition-all hover:bg-zinc-900"
+              placeholder="如有邀请码请填写"
+            />
+          </div>
+
+          <button
+            type="submit"
             :disabled="loading"
             class="w-full bg-white text-black font-bold rounded-xl px-4 py-3.5 mt-8 hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)]"
           >
-            <span v-if="!loading">登 录</span>
+            <span v-if="!loading">注 册</span>
             <Loader2 v-else class="w-5 h-5 animate-spin" />
           </button>
         </form>
-        
+
         <div v-if="errorMsg" class="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center font-medium animate-in fade-in slide-in-from-top-2 duration-300">
           {{ errorMsg }}
         </div>
-        
+
         <p class="mt-10 text-center text-sm text-zinc-500">
-          还没有账号？ 
-          <RouterLink to="/register" class="font-medium text-zinc-300 hover:text-white transition underline decoration-white/20 underline-offset-4 hover:decoration-white/60">立即注册</RouterLink>
+          已有账号？
+          <RouterLink to="/login" class="font-medium text-zinc-300 hover:text-white transition underline decoration-white/20 underline-offset-4 hover:decoration-white/60">返回登录</RouterLink>
         </p>
       </div>
     </div>
@@ -124,54 +118,39 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { Eye, EyeOff, Loader2 } from '@lucide/vue'
-import { isTauriDesktop } from '@/utils/desktop-env'
-import { loadSavedCredentials, saveCredentialsAfterLogin } from '@/services/saved-credentials'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
+const invitationCode = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
-const isDesktop = isTauriDesktop()
-const rememberPassword = ref(false)
-const showPassword = ref(false)
 
-onMounted(async () => {
-  if (!isDesktop) {
+const handleRegister = async () => {
+  errorMsg.value = ''
+  if (password.value !== confirmPassword.value) {
+    errorMsg.value = '两次输入的密码不一致。'
     return
   }
 
-  try {
-    const saved = await loadSavedCredentials()
-    if (saved) {
-      email.value = saved.email
-      password.value = saved.password
-      rememberPassword.value = true
-    }
-  } catch {
-    // 本地凭据文件不可用时不阻断登录；用户仍可手动输入账号密码。
-  }
-})
-
-const handleLogin = async () => {
   loading.value = true
-  errorMsg.value = ''
-  
   try {
-    await authStore.login({ email: email.value, password: password.value })
-    await saveCredentialsAfterLogin(isDesktop, undefined, rememberPassword.value, {
+    await authStore.register({
       email: email.value,
-      password: password.value
+      password: password.value,
+      invitation_code: invitationCode.value.trim() || undefined
     })
     router.push('/')
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.message || '登录失败，请检查您的账号和密码。'
+    errorMsg.value = err.response?.data?.message || err.response?.data?.detail || '注册失败，请检查填写的信息。'
   } finally {
     loading.value = false
   }

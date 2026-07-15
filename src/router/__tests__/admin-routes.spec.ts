@@ -9,4 +9,12 @@ describe('application routes', () => {
 
     expect(source).not.toContain("path: '/admin'")
   })
+
+  it('exposes a public register route', () => {
+    const source = readFileSync(fileURLToPath(new URL('../index.ts', import.meta.url)), 'utf8')
+
+    expect(source).toContain("path: '/register'")
+    expect(source).toContain("name: 'Register'")
+    expect(source).toContain("@/views/auth/RegisterView.vue")
+  })
 })
