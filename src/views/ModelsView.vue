@@ -1,23 +1,12 @@
 <template>
   <div class="space-y-6">
-    <!-- Network Status Panel -->
-    <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="relative flex h-3 w-3">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-        </div>
-        <span class="text-sm font-medium text-white">所有系统运行正常</span>
-      </div>
-      <div class="flex space-x-6 text-sm">
-        <div class="flex items-center text-zinc-400">
-          <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-          OpenAI (99.9% 在线)
-        </div>
-        <div class="flex items-center text-zinc-400">
-          <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-          Anthropic (100% 在线)
-        </div>
+
+    <!-- Pricing Notice -->
+    <div class="glass-panel p-4 border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+      <Info class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+      <div class="text-sm text-zinc-300">
+        <strong class="text-amber-500">提示：</strong>以下模型均为官方价格，真实价格为 <strong>官方价格 × 分组倍率</strong>。
+        <span class="text-zinc-400 block mt-1">例如分组为 glm-5.2 时，倍率可能是 0.25，即享受官方价格的 2.5 折。</span>
       </div>
     </div>
 
@@ -101,6 +90,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { Info } from '@lucide/vue'
+
 const models = ref<any[]>([
   { id: 1, name: 'opus-4.8', platform: 'Anthropic', pricing: { input_price: 15.0, output_price: 75.0, cache_read_price: 1.5, cache_creation_price: 18.75 } },
   { id: 2, name: 'opus-4.7', platform: 'Anthropic', pricing: { input_price: 3.0, output_price: 15.0, cache_read_price: 0.3, cache_creation_price: 3.75 } },

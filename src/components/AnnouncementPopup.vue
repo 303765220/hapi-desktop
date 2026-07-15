@@ -21,7 +21,7 @@
         </div>
         
         <div 
-          class="text-sm text-zinc-300 mb-4 line-clamp-3 leading-relaxed markdown-body-mini"
+          class="text-sm text-zinc-300 mb-4 line-clamp-3 leading-relaxed markdown-body"
           v-html="renderMarkdown(store.currentPopup.content)"
         ></div>
         
@@ -65,23 +65,6 @@ const viewDetails = () => {
 </script>
 
 <style scoped>
-/* Minimal markdown styles for popup */
-:deep(.markdown-body-mini) h1, 
-:deep(.markdown-body-mini) h2, 
-:deep(.markdown-body-mini) h3, 
-:deep(.markdown-body-mini) h4 {
-  font-weight: bold;
-  font-size: 1.1em;
-  margin-bottom: 0.5em;
-  color: white;
-}
-:deep(.markdown-body-mini) p {
-  margin-bottom: 0.5em;
-}
-:deep(.markdown-body-mini) a {
-  color: #a855f7;
-}
-
 .popup-enter-active,
 .popup-leave-active {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);

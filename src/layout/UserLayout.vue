@@ -102,6 +102,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementStore } from '@/stores/announcements'
+import { isTauriDesktop } from '@/utils/desktop-env'
 import { showConfirm } from '@/utils/message'
 import { getStableUptimeDays } from '@/utils/uptime'
 import { 
@@ -147,18 +148,23 @@ const currentRouteName = computed(() => route.name || 'Dashboard')
 
 const uptimeDays = computed(() => getStableUptimeDays())
 
-const menuItems = [
-  { name: '仪表盘', path: '/', icon: LayoutDashboard },
-  { name: '我的订阅', path: '/subscriptions', icon: Bookmark },
-  { name: 'API 密钥', path: '/keys', icon: Key },
-  { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal },
-  { name: '可用模型', path: '/models', icon: Server },
-  { name: '渠道状态', path: '/status', icon: Activity },
-  { name: '使用明细', path: '/usage', icon: BarChart3 },
-  { name: '钱包与套餐', path: '/billing', icon: Wallet },
-  { name: '邀请返利', path: '/affiliate', icon: Users },
-  { name: '个人设置', path: '/profile', icon: Settings }
-]
+const menuItems = computed(() => {
+  const items = [
+    { name: '仪表盘', path: '/', icon: LayoutDashboard },
+    { name: '我的订阅', path: '/subscriptions', icon: Bookmark },
+    { name: 'API 密钥', path: '/keys', icon: Key },
+    { name: '可用模型', path: '/models', icon: Server },
+    { name: '渠道状态', path: '/status', icon: Activity },
+    { name: '使用明细', path: '/usage', icon: BarChart3 },
+    { name: '钱包与套餐', path: '/billing', icon: Wallet },
+    { name: '邀请返利', path: '/affiliate', icon: Users },
+    { name: '个人设置', path: '/profile', icon: Settings }
+  ]
+  if (isTauriDesktop()) {
+    items.splice(3, 0, { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal })
+  }
+  return items
+})
 </script>
 
 <style scoped>

@@ -122,16 +122,19 @@
           <div class="flex-1 min-w-0">
             <p class="text-xs text-zinc-400 font-medium mb-1">总 Token</p>
             <h3 class="text-xl font-bold text-white mb-1 truncate">{{ formatNumberKMB(stats.total_tokens) }}</h3>
-            <p class="text-xs text-zinc-500 truncate mt-1" :title="`输入 ${formatNumberKMB(stats.total_input_tokens)} · 输出 ${formatNumberKMB(stats.total_output_tokens)} · 命中缓存 ${formatNumberKMB(stats.total_cache_read_tokens)} · 缓存写入 ${formatNumberKMB(stats.total_cache_creation_tokens)}`">
-              入 <span class="text-white">{{ formatNumberKMB(stats.total_input_tokens) }}</span> · 
-              出 <span class="text-white">{{ formatNumberKMB(stats.total_output_tokens) }}</span> · 
-              存 <span class="text-sky-400">{{ formatNumberKMB(stats.total_cache_read_tokens) }}</span> · 
-              写 <span class="text-amber-400">{{ formatNumberKMB(stats.total_cache_creation_tokens) }}</span>
-            </p>
-            <p v-if="((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0)) > 0" class="text-xs text-zinc-500 mt-1 truncate">
-              命中率: <span class="text-white">{{ formatNumberKMB(stats.total_cache_read_tokens) }} / {{ formatNumberKMB((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0)) }}</span>
-              <span class="text-sky-400 font-mono ml-1.5">{{ (((stats.total_cache_read_tokens || 0) / ((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0))) * 100).toFixed(1) }}%</span>
-            </p>
+            <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-zinc-500 mt-1.5" :title="`输入 ${formatNumberKMB(stats.total_input_tokens)} · 输出 ${formatNumberKMB(stats.total_output_tokens)} · 命中缓存 ${formatNumberKMB(stats.total_cache_read_tokens)} · 缓存写入 ${formatNumberKMB(stats.total_cache_creation_tokens)}`">
+              <span>入 <span class="text-white">{{ formatNumberKMB(stats.total_input_tokens) }}</span></span>
+              <span class="text-zinc-600">·</span>
+              <span>出 <span class="text-white">{{ formatNumberKMB(stats.total_output_tokens) }}</span></span>
+              <span class="text-zinc-600">·</span>
+              <span>存 <span class="text-sky-400">{{ formatNumberKMB(stats.total_cache_read_tokens) }}</span></span>
+              <span class="text-zinc-600">·</span>
+              <span>写 <span class="text-amber-400">{{ formatNumberKMB(stats.total_cache_creation_tokens) }}</span></span>
+            </div>
+            <div v-if="((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0)) > 0" class="flex flex-wrap items-center gap-x-1.5 mt-1 text-[11px] text-zinc-500">
+              <span>命中率: <span class="text-white">{{ formatNumberKMB(stats.total_cache_read_tokens) }} / {{ formatNumberKMB((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0)) }}</span></span>
+              <span class="text-sky-400 font-mono bg-sky-500/10 px-1 py-0.5 rounded">{{ (((stats.total_cache_read_tokens || 0) / ((stats.total_cache_read_tokens || 0) + (stats.total_input_tokens || 0) + (stats.total_cache_creation_tokens || 0))) * 100).toFixed(1) }}%</span>
+            </div>
           </div>
         </div>
 
@@ -214,16 +217,31 @@
                   <span class="truncate">{{ formatUsageGroup(log) }}</span>
                 </span>
               </td>
-              <td class="px-6 py-4">
-                <div class="flex flex-col">
-                  <span class="text-sm text-white font-mono">{{ ((log.input_tokens || 0) + (log.output_tokens || 0)).toLocaleString() }} 总计</span>
-                  <span class="text-xs text-zinc-500 font-mono flex items-center mt-1">
-                    <ArrowDownToLine class="w-3 h-3 mr-1 text-green-400/70" /> {{ log.input_tokens || 0 }} 
-                    <span class="mx-2 text-zinc-700">|</span> 
-                    <ArrowUpFromLine class="w-3 h-3 mr-1 text-purple-400/70" /> {{ log.output_tokens || 0 }}
-                  </span>
-                </div>
-              </td>
+	              <td class="px-6 py-4">
+	                <div class="flex flex-col">
+	                  <span class="text-sm text-zinc-500 font-mono flex flex-wrap items-center gap-x-2 gap-y-1">
+	                    <span class="inline-flex items-center" title="输入 Token">
+	                      <ArrowDownToLine class="w-3.5 h-3.5 mr-1 text-green-400/80" /> {{ formatTokenCount(log.input_tokens) }}
+	                    </span>
+		                    <span class="inline-flex items-center" title="输出 Token">
+		                      <ArrowUpFromLine class="w-3.5 h-3.5 mr-1 text-purple-400/80" /> {{ formatTokenCount(log.output_tokens) }}
+		                    </span>
+		                    <span v-if="hasCacheReadTokens(log)" class="inline-flex items-center text-sky-400" title="cache read tokens">
+		                      <Box class="w-3.5 h-3.5 mr-1 text-sky-400/80" /> {{ formatCacheTokenCount(log.cache_read_tokens) }}
+		                    </span>
+		                    <span v-if="(log.cache_creation_5m_tokens || 0) > 0" class="inline-flex items-center text-amber-400" title="5m cache write tokens">
+		                      <Timer class="w-3.5 h-3.5 mr-1 text-amber-400/80" /> 5m {{ formatCacheTokenCount(log.cache_creation_5m_tokens) }}
+		                    </span>
+		                    <span v-if="(log.cache_creation_1h_tokens || 0) > 0" class="inline-flex items-center text-orange-400" title="1h cache write tokens">
+		                      <Timer class="w-3.5 h-3.5 mr-1 text-orange-400/80" /> 1h {{ formatCacheTokenCount(log.cache_creation_1h_tokens) }}
+		                    </span>
+		                    <span v-if="hasAggregateCacheCreationTokens(log)" class="inline-flex items-center text-amber-400" title="cache write tokens">
+		                      <Timer class="w-3.5 h-3.5 mr-1 text-amber-400/80" /> {{ formatCacheTokenCount(log.cache_creation_tokens) }}
+		                    </span>
+		                  </span>
+	                  <span class="mt-1 text-xs text-zinc-500 font-mono">{{ getUsageLogTotalTokens(log).toLocaleString() }} 总计</span>
+		                </div>
+	              </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col">
                   <span class="text-sm text-purple-400 font-medium">{{ log.rate_multiplier || 1 }}x</span>
@@ -518,6 +536,30 @@ const formatBeijingTime = (dateStr: string) => {
 const formatTokenPricePerMillion = (cost: number | undefined, tokens: number | undefined) => {
   if (!cost || !tokens) return '$0.0000'
   return '$' + ((cost / tokens) * 1000000).toFixed(4)
+}
+
+const formatTokenCount = (tokens: number | null | undefined) => {
+  return (tokens || 0).toLocaleString()
+}
+
+const formatCacheTokenCount = (tokens: number | null | undefined) => {
+  return formatNumberKMB(tokens || 0)
+}
+
+const hasSplitCacheCreationTokens = (log: any) => {
+  return (log.cache_creation_5m_tokens || 0) > 0 || (log.cache_creation_1h_tokens || 0) > 0
+}
+
+const hasCacheReadTokens = (log: any) => {
+  return (log.cache_read_tokens || 0) > 0
+}
+
+const hasAggregateCacheCreationTokens = (log: any) => {
+  return !hasSplitCacheCreationTokens(log) && (log.cache_creation_tokens || 0) > 0
+}
+
+const getUsageLogTotalTokens = (log: any) => {
+  return (log.input_tokens || 0) + (log.output_tokens || 0) + (log.cache_read_tokens || 0) + (log.cache_creation_tokens || 0)
 }
 
 const formatDuration = (ms: number | null | undefined) => {

@@ -7,6 +7,7 @@ import UserLayout from '@/layout/UserLayout.vue'
 import { createAppHistory } from './history'
 import { resolveAuthRedirect } from './auth-guard'
 import { useAuthStore } from '@/stores/auth'
+import { isTauriDesktop } from '@/utils/desktop-env'
 
 const router = createRouter({
   history: createAppHistory(),
@@ -65,6 +66,13 @@ const router = createRouter({
           path: 'client-setup',
           name: '一键配置',
           component: () => import('@/views/ClientSetupView.vue'),
+          beforeEnter: (_to, _from, next) => {
+            if (!isTauriDesktop()) {
+              next('/')
+            } else {
+              next()
+            }
+          }
         },
         {
           path: 'status',

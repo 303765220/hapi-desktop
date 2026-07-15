@@ -87,16 +87,16 @@
           <span v-if="stats?.today_tokens > 0" class="text-xs font-medium px-2 py-1 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">今日: {{ formatNumberKMB(stats?.today_tokens) }}</span>
         </div>
         <div>
-          <div class="flex items-center justify-between mb-0.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-1.5 sm:mb-0.5 gap-1 sm:gap-0">
             <p class="text-xs text-zinc-400 font-medium">消耗 Tokens</p>
-            <div class="text-xs text-zinc-500 flex space-x-2 font-medium">
+            <div class="text-[10px] sm:text-xs text-zinc-500 flex flex-wrap gap-2 sm:gap-0 sm:space-x-2 font-medium">
               <span title="输入Tokens">入: {{ formatNumberKMB(stats?.total_input_tokens) }}</span>
               <span title="输出Tokens">出: {{ formatNumberKMB(stats?.total_output_tokens) }}</span>
               <span title="缓存Tokens">缓: {{ formatNumberKMB((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0)) }}</span>
             </div>
           </div>
           <div class="flex items-baseline space-x-1">
-            <h2 class="text-2xl font-bold tracking-tight text-white">{{ formatNumberKMB(stats?.total_tokens) }}</h2>
+            <h2 class="text-2xl font-bold tracking-tight text-white break-all">{{ formatNumberKMB(stats?.total_tokens) }}</h2>
           </div>
         </div>
       </div>
@@ -226,13 +226,140 @@
         </router-link>
       </div>
 
+<div class="lg:col-span-3 grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+      <!-- Model Distribution -->
+      <div class="glass-panel p-6 flex flex-col min-h-[300px]">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h3 class="text-lg font-semibold text-white shrink-0">模型分布</h3>
+          <div class="flex bg-black/40 rounded-lg p-1 border border-white/5">
+            <button
+              @click="modelSortMode = 'token'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+              :class="modelSortMode === 'token' ? 'bg-white/10 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'"
+            >
+              按 Token
+            </button>
+            <button
+              @click="modelSortMode = 'cost'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+              :class="modelSortMode === 'cost' ? 'bg-white/10 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'"
+            >
+              按实际消费
+            </button>
+          </div>
+        </div>
+        <div v-if="loadingModels" class="flex-1 flex items-center justify-center">
+          <span class="animate-pulse text-zinc-500 text-sm">加载模型分布中...</span>
+        </div>
+        <div v-else-if="modelStats.length === 0" class="flex-1 flex items-center justify-center text-zinc-500 text-sm">
+          暂无数据
+        </div>
+        <div v-else class="flex flex-col sm:flex-row items-center gap-6 flex-1 min-h-0">
+          <div class="relative h-48 w-48 shrink-0">
+            <Doughnut :data="modelChartData" :options="doughnutOptions" />
+          </div>
+          <div class="distribution-table-shell custom-scrollbar">
+            <table class="distribution-table">
+              <colgroup>
+                <col class="w-[36%]" />
+                <col class="w-[15%]" />
+                <col class="w-[16%]" />
+                <col class="w-[17%]" />
+                <col class="w-[16%]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>模型</th>
+                  <th class="text-right">请求</th>
+                  <th class="text-right">Token</th>
+                  <th class="text-right">实际</th>
+                  <th class="text-right">标准</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="model in sortedModelStats" :key="model.model">
+                  <td class="distribution-name" :title="model.model">{{ model.model }}</td>
+                  <td class="text-right">{{ formatRequestCount(model.requests) }}</td>
+                  <td class="text-right">{{ formatNumberKMB(model.total_tokens) }}</td>
+                  <td class="distribution-cost text-right">${{ model.actual_cost.toFixed(4) }}</td>
+                  <td class="distribution-muted text-right">${{ model.cost.toFixed(4) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group Distribution (Admin Only) -->
+      <div v-if="authStore.isAdmin" class="glass-panel p-6 flex flex-col min-h-[300px]">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h3 class="text-lg font-semibold text-white shrink-0">分组使用分布</h3>
+          <div class="flex bg-black/40 rounded-lg p-1 border border-white/5">
+            <button
+              @click="groupSortMode = 'token'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+              :class="groupSortMode === 'token' ? 'bg-white/10 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'"
+            >
+              按 Token
+            </button>
+            <button
+              @click="groupSortMode = 'cost'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+              :class="groupSortMode === 'cost' ? 'bg-white/10 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'"
+            >
+              按实际消费
+            </button>
+          </div>
+        </div>
+        <div v-if="loadingGroups" class="flex-1 flex items-center justify-center">
+          <span class="animate-pulse text-zinc-500 text-sm">加载分组分布中...</span>
+        </div>
+        <div v-else-if="groupStats.length === 0" class="flex-1 flex items-center justify-center text-zinc-500 text-sm">
+          暂无数据
+        </div>
+        <div v-else class="flex flex-col sm:flex-row items-center gap-6 flex-1 min-h-0">
+          <div class="relative h-48 w-48 shrink-0">
+            <Doughnut :data="groupChartData" :options="doughnutOptions" />
+          </div>
+          <div class="distribution-table-shell custom-scrollbar">
+            <table class="distribution-table">
+              <colgroup>
+                <col class="w-[36%]" />
+                <col class="w-[15%]" />
+                <col class="w-[16%]" />
+                <col class="w-[17%]" />
+                <col class="w-[16%]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>分组</th>
+                  <th class="text-right">请求</th>
+                  <th class="text-right">Token</th>
+                  <th class="text-right">实际</th>
+                  <th class="text-right">标准</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="group in sortedGroupStats" :key="group.group_id">
+                  <td class="distribution-name" :title="group.group_name">{{ group.group_name }}</td>
+                  <td class="text-right">{{ formatRequestCount(group.requests) }}</td>
+                  <td class="text-right">{{ formatNumberKMB(groupTokenTotal(group)) }}</td>
+                  <td class="distribution-cost text-right">${{ group.actual_cost.toFixed(4) }}</td>
+                  <td class="distribution-muted text-right">${{ group.cost.toFixed(4) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { Line } from 'vue-chartjs'
+import { Line, Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -242,7 +369,8 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  ArcElement
 } from 'chart.js'
 
 ChartJS.register(
@@ -253,7 +381,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  ArcElement
 )
 import { 
   CreditCard, 
@@ -268,7 +397,8 @@ import {
   TrendingUp,
   Flame
 } from '@lucide/vue'
-import { getDashboardStats, getDashboardTrend } from '@/api/usage'
+import { usageAPI } from '@/api/usage'
+import adminDashboardAPI from '@/api/admin/dashboard'
 import { list as listKeys } from '@/api/keys'
 import { useAuthStore } from '@/stores/auth'
 
@@ -278,12 +408,25 @@ const trend = ref<any>(null)
 const recentKeys = ref<any[]>([])
 const loading = ref(true)
 
+// Stats
+const modelStats = ref<any[]>([])
+const loadingModels = ref(false)
+const modelSortMode = ref<'token' | 'cost'>('token')
+
+const groupStats = ref<any[]>([])
+const loadingGroups = ref(false)
+const groupSortMode = ref<'token' | 'cost'>('token')
+
 const formatNumberKMB = (num: number | undefined) => {
   if (num === null || num === undefined) return '0'
   if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B'
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
   if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K'
   return num.toString()
+}
+
+const formatRequestCount = (num: number | undefined) => {
+  return (num || 0).toLocaleString()
 }
 
 const currentRange = ref('30d')
@@ -318,7 +461,7 @@ const chartData = computed(() => {
         pointBackgroundColor: '#a855f7',
         pointBorderColor: '#fff',
         pointBorderWidth: 1,
-        pointRadius: 0, // hide by default
+        pointRadius: 0,
         pointHoverRadius: 6,
         pointHitRadius: 10
       }
@@ -360,32 +503,97 @@ const chartOptions = {
   }
 }
 
+const sortedModelStats = computed(() => {
+  const models = [...modelStats.value]
+  if (modelSortMode.value === 'token') {
+    return models.sort((a: any, b: any) => b.total_tokens - a.total_tokens).slice(0, 5)
+  } else {
+    return models.sort((a: any, b: any) => b.actual_cost - a.actual_cost).slice(0, 5)
+  }
+})
+
+const modelChartData = computed(() => {
+  const stats = sortedModelStats.value
+  if (!stats.length) return { labels: [], datasets: [] }
+  const colors = ['#a855f7', '#3b82f6', '#10b981', '#f59e0b', '#ec4899']
+  return {
+    labels: stats.map((m: any) => m.model),
+    datasets: [{
+      data: stats.map((m: any) => modelSortMode.value === 'token' ? m.total_tokens : m.actual_cost),
+      backgroundColor: colors.slice(0, stats.length),
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  }
+})
+
+const sortedGroupStats = computed(() => {
+  const groups = [...groupStats.value]
+  if (groupSortMode.value === 'token') {
+    return groups.sort((a: any, b: any) => groupTokenTotal(b) - groupTokenTotal(a)).slice(0, 5)
+  } else {
+    return groups.sort((a: any, b: any) => b.actual_cost - a.actual_cost).slice(0, 5)
+  }
+})
+
+const groupTokenTotal = (group: any) => group.total_tokens ?? group.tokens ?? 0
+
+const groupChartData = computed(() => {
+  const stats = sortedGroupStats.value
+  if (!stats.length) return { labels: [], datasets: [] }
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#a855f7']
+  return {
+    labels: stats.map((g: any) => g.group_name || '默认分组'),
+    datasets: [{
+      data: stats.map((g: any) => groupSortMode.value === 'token' ? groupTokenTotal(g) : g.actual_cost),
+      backgroundColor: colors.slice(0, stats.length),
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  }
+})
+
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(24, 24, 27, 0.9)',
+      titleColor: '#a1a1aa',
+      bodyColor: '#fff',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      padding: 10
+    }
+  }
+}
+
 const getTrendDateParams = (range: string) => {
   const now = new Date()
   const startDate = new Date()
   let granularity: 'day' | 'hour' = 'day'
   
   if (range === '30d') {
-    startDate.setDate(now.getDate() - 30)
+    startDate.setTime(now.getTime() - 29 * 86400000)
   } else if (range === '7d') {
-    startDate.setDate(now.getDate() - 7)
+    startDate.setTime(now.getTime() - 6 * 86400000)
   } else if (range === '24h') {
     startDate.setHours(now.getHours() - 24)
     granularity = 'hour'
   }
   
   const pad = (n: number) => String(n).padStart(2, '0')
-  const formatDate = (d: Date, withTime = false) => {
+  const formatDate = (d: Date) => {
     const ymd = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
-    if (withTime) {
-      return `${ymd} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`
-    }
     return ymd
   }
 
+  // 后端 Dashboard 日期参数契约是 YYYY-MM-DD；24 小时视图只通过 granularity=hour 切换聚合粒度。
   return {
-    start_date: formatDate(startDate, range === '24h'),
-    end_date: formatDate(now, range === '24h'),
+    start_date: formatDate(startDate),
+    end_date: formatDate(now),
     granularity
   }
 }
@@ -396,10 +604,22 @@ const updateTrend = async (range: string) => {
   isTrendLoading.value = true
   try {
     const params = getTrendDateParams(range)
-    const trendData = await getDashboardTrend(params)
-    trend.value = trendData
+    const [trendRes, modelsRes] = await Promise.all([
+      usageAPI.getDashboardTrend(params),
+      usageAPI.getDashboardModels(params)
+    ])
+    trend.value = trendRes
+    modelStats.value = modelsRes.models || []
+    if (authStore.isAdmin) {
+      const adminRes = await adminDashboardAPI.getSnapshotV2({
+        start_date: params.start_date,
+        end_date: params.end_date,
+        include_group_stats: true
+      })
+      groupStats.value = adminRes.groups || []
+    }
   } catch (err) {
-    console.error("Failed to update trend", err)
+    console.error("Failed to update dashboard data", err)
   } finally {
     isTrendLoading.value = false
   }
@@ -408,18 +628,24 @@ const updateTrend = async (range: string) => {
 onMounted(async () => {
   try {
     await authStore.checkAuth()
-    
-    // Use Promise.all to fetch in parallel
-    const [statsData, trendData, keysData] = await Promise.all([
-      getDashboardStats(),
-      getDashboardTrend(getTrendDateParams('30d')),
-      listKeys(1, 4, { sort_by: 'created_at', sort_order: 'desc' })
+    const params = getTrendDateParams('30d')
+    const [statsData, trendData, keysData, modelsData] = await Promise.all([
+      usageAPI.getDashboardStats(),
+      usageAPI.getDashboardTrend(params),
+      listKeys(1, 4, { sort_by: 'created_at', sort_order: 'desc' }),
+      usageAPI.getDashboardModels(params)
     ])
-    
     stats.value = statsData
     trend.value = trendData
-    if (keysData && keysData.items) {
-      recentKeys.value = keysData.items
+    modelStats.value = modelsData.models || []
+    recentKeys.value = keysData.items || []
+    if (authStore.isAdmin) {
+      const adminRes = await adminDashboardAPI.getSnapshotV2({
+        start_date: params.start_date,
+        end_date: params.end_date,
+        include_group_stats: true
+      })
+      groupStats.value = adminRes.groups || []
     }
   } catch (err) {
     console.error("Failed to load dashboard data", err)
@@ -440,5 +666,81 @@ onMounted(async () => {
   to {
     stroke-dashoffset: 0;
   }
+}
+
+.distribution-table-shell {
+  flex: 1 1 0%;
+  min-width: 0;
+  width: 100%;
+  max-height: 12.75rem;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(8, 8, 10, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.distribution-table {
+  width: 100%;
+  min-width: 640px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.distribution-table thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(14, 14, 17, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.distribution-table th {
+  height: 36px;
+  padding: 0 14px;
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.distribution-table td {
+  height: 34px;
+  padding: 0 14px;
+  color: #a1a1aa;
+  white-space: nowrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  vertical-align: middle;
+}
+
+.distribution-table tbody tr {
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.distribution-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.distribution-name {
+  overflow: hidden;
+  color: #e4e4e7;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.distribution-cost {
+  color: #00d492;
+  font-weight: 700;
+}
+
+.distribution-muted {
+  color: #71717a;
 }
 </style>

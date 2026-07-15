@@ -133,7 +133,11 @@ impl ClientSetupPaths {
     }
 
     fn opencode_auth_path(&self) -> PathBuf {
-        self.home.join(".local").join("share").join("opencode").join("auth.json")
+        self.home
+            .join(".local")
+            .join("share")
+            .join("opencode")
+            .join("auth.json")
     }
 }
 
@@ -193,7 +197,10 @@ fn has_hapi_config(client: ClientSetupClient, paths: &ClientSetupPaths) -> bool 
             ClientSetupClient::Codex => {
                 let config = paths.config_path(client);
                 fs::read_to_string(config)
-                    .map(|text| text.contains("[model_providers.hapi]") || text.contains("model_provider = \"hapi\""))
+                    .map(|text| {
+                        text.contains("[model_providers.hapi]")
+                            || text.contains("model_provider = \"hapi\"")
+                    })
                     .unwrap_or(false)
             }
             ClientSetupClient::GeminiCli => fs::read_to_string(paths.config_path(client))
@@ -211,19 +218,55 @@ fn has_hapi_config(client: ClientSetupClient, paths: &ClientSetupPaths) -> bool 
         }
 }
 
-fn configured_key_for_client(client: ClientSetupClient, paths: &ClientSetupPaths) -> Option<String> {
+fn configured_key_for_client(
+    client: ClientSetupClient,
+    paths: &ClientSetupPaths,
+) -> Option<String> {
     configured_keys_for_client(client, paths).into_iter().next()
 }
 
 fn configured_keys_for_client(client: ClientSetupClient, paths: &ClientSetupPaths) -> Vec<String> {
     match client {
-        ClientSetupClient::Codex => read_configured_codex_key(paths).ok().flatten().into_iter().collect(),
-        ClientSetupClient::GeminiCli => read_configured_gemini_key(read_optional_text(&paths.config_path(client)).ok().flatten()).into_iter().collect(),
-        ClientSetupClient::Opencode => read_configured_opencode_keys_from_auth(read_optional_text(&paths.opencode_auth_path()).ok().flatten())
-            .or_else(|| read_configured_opencode_key(read_optional_text(&paths.config_path(client)).ok().flatten()).map(|key| vec![key]))
-            .unwrap_or_default(),
-        ClientSetupClient::Openclaw => read_configured_openclaw_key(read_optional_text(&paths.config_path(client)).ok().flatten()).into_iter().collect(),
-        ClientSetupClient::Hermes => read_configured_hermes_key(read_optional_text(&paths.config_path(client)).ok().flatten()).into_iter().collect(),
+        ClientSetupClient::Codex => read_configured_codex_key(paths)
+            .ok()
+            .flatten()
+            .into_iter()
+            .collect(),
+        ClientSetupClient::GeminiCli => read_configured_gemini_key(
+            read_optional_text(&paths.config_path(client))
+                .ok()
+                .flatten(),
+        )
+        .into_iter()
+        .collect(),
+        ClientSetupClient::Opencode => read_configured_opencode_keys_from_auth(
+            read_optional_text(&paths.opencode_auth_path())
+                .ok()
+                .flatten(),
+        )
+        .or_else(|| {
+            read_configured_opencode_key(
+                read_optional_text(&paths.config_path(client))
+                    .ok()
+                    .flatten(),
+            )
+            .map(|key| vec![key])
+        })
+        .unwrap_or_default(),
+        ClientSetupClient::Openclaw => read_configured_openclaw_key(
+            read_optional_text(&paths.config_path(client))
+                .ok()
+                .flatten(),
+        )
+        .into_iter()
+        .collect(),
+        ClientSetupClient::Hermes => read_configured_hermes_key(
+            read_optional_text(&paths.config_path(client))
+                .ok()
+                .flatten(),
+        )
+        .into_iter()
+        .collect(),
     }
 }
 
@@ -272,7 +315,10 @@ pub fn configure_client(
     configure_client_with_paths(client, &api_key, key_platform.as_deref(), &paths)
 }
 
-pub fn clear_client_config(client: ClientSetupClient, api_key: Option<String>) -> Result<ClientConfigureResult, String> {
+pub fn clear_client_config(
+    client: ClientSetupClient,
+    api_key: Option<String>,
+) -> Result<ClientConfigureResult, String> {
     let paths = ClientSetupPaths::from_env()?;
     clear_client_config_with_paths(client, api_key.as_deref(), &paths)
 }
@@ -288,7 +334,10 @@ fn configure_client_with_paths(
         return Err("请选择有效的 Hapi API Key。".to_string());
     }
     if !client_installed(client, paths) {
-        return Err(format!("未检测到 {}，请先安装后再配置。", client.display_name()));
+        return Err(format!(
+            "未检测到 {}，请先安装后再配置。",
+            client.display_name()
+        ));
     }
 
     let config_path = paths.config_path(client);
@@ -298,16 +347,33 @@ fn configure_client_with_paths(
             configure_codex(paths, trimmed_key)?;
         }
         ClientSetupClient::GeminiCli => {
-            write_text_file(&config_path, &build_gemini_env_text(read_optional_text(&config_path)?, trimmed_key)?)?;
+            write_text_file(
+                &config_path,
+                &build_gemini_env_text(read_optional_text(&config_path)?, trimmed_key)?,
+            )?;
         }
         ClientSetupClient::Opencode => {
             configure_opencode(paths, trimmed_key, key_platform)?;
         }
         ClientSetupClient::Openclaw => {
-            write_json_file(&config_path, &build_openclaw_config(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
+            write_json_file(
+                &config_path,
+                &build_openclaw_config(
+                    read_optional_text(&config_path)?,
+                    trimmed_key,
+                    key_platform,
+                )?,
+            )?;
         }
         ClientSetupClient::Hermes => {
-            write_text_file(&config_path, &build_hermes_yaml_text(read_optional_text(&config_path)?, trimmed_key, key_platform)?)?;
+            write_text_file(
+                &config_path,
+                &build_hermes_yaml_text(
+                    read_optional_text(&config_path)?,
+                    trimmed_key,
+                    key_platform,
+                )?,
+            )?;
         }
     }
 
@@ -332,16 +398,25 @@ fn clear_client_config_with_paths(
             clear_codex(paths)?;
         }
         ClientSetupClient::GeminiCli => {
-            write_text_file(&config_path, &clear_gemini_env_text(read_optional_text(&config_path)?)?)?;
+            write_text_file(
+                &config_path,
+                &clear_gemini_env_text(read_optional_text(&config_path)?)?,
+            )?;
         }
         ClientSetupClient::Opencode => {
             clear_opencode(paths, api_key)?;
         }
         ClientSetupClient::Openclaw => {
-            write_json_file(&config_path, &clear_openclaw_config(read_optional_text(&config_path)?)?)?;
+            write_json_file(
+                &config_path,
+                &clear_openclaw_config(read_optional_text(&config_path)?)?,
+            )?;
         }
         ClientSetupClient::Hermes => {
-            write_text_file(&config_path, &clear_hermes_yaml_text(read_optional_text(&config_path)?)?)?;
+            write_text_file(
+                &config_path,
+                &clear_hermes_yaml_text(read_optional_text(&config_path)?)?,
+            )?;
         }
     }
 
@@ -492,11 +567,7 @@ fn clear_codex_config_text(existing: &str) -> Result<String, String> {
         if doc.get("model_reasoning_effort").and_then(Item::as_str) == Some("high") {
             doc.remove("model_reasoning_effort");
         }
-        if doc
-            .get("disable_response_storage")
-            .and_then(Item::as_bool)
-            == Some(true)
-        {
+        if doc.get("disable_response_storage").and_then(Item::as_bool) == Some(true) {
             doc.remove("disable_response_storage");
         }
     }
@@ -615,7 +686,10 @@ fn build_opencode_config(
     api_key: &str,
     key_platform: Option<&str>,
 ) -> Result<Value, String> {
-    let mut config = parse_json_or_default(existing, json!({ "$schema": "https://opencode.ai/config.json" }))?;
+    let mut config = parse_json_or_default(
+        existing,
+        json!({ "$schema": "https://opencode.ai/config.json" }),
+    )?;
     ensure_object(&mut config);
     if config.get("provider").and_then(Value::as_object).is_none() {
         config["provider"] = json!({});
@@ -675,7 +749,10 @@ fn code_models_for_platform(key_platform: Option<&str>) -> &'static [&'static st
 }
 
 fn clear_opencode_config(existing: Option<String>, api_key: Option<&str>) -> Result<Value, String> {
-    let mut config = parse_json_or_default(existing, json!({ "$schema": "https://opencode.ai/config.json" }))?;
+    let mut config = parse_json_or_default(
+        existing,
+        json!({ "$schema": "https://opencode.ai/config.json" }),
+    )?;
     if let Some(providers) = config.get_mut("provider").and_then(Value::as_object_mut) {
         if let Some(api_key) = api_key {
             providers.remove(&opencode_provider_id(api_key));
@@ -697,7 +774,10 @@ fn clear_opencode(paths: &ClientSetupPaths, api_key: Option<&str>) -> Result<(),
         return Err(err);
     }
 
-    if let Err(err) = write_json_file(&config_path, &clear_opencode_config(read_optional_text(&config_path)?, api_key)?) {
+    if let Err(err) = write_json_file(
+        &config_path,
+        &clear_opencode_config(read_optional_text(&config_path)?, api_key)?,
+    ) {
         restore_optional_file(&auth_path, old_auth)?;
         return Err(err);
     }
@@ -752,12 +832,19 @@ fn build_openclaw_config(
     api_key: &str,
     key_platform: Option<&str>,
 ) -> Result<Value, String> {
-    let mut config = parse_json_or_default(existing, json!({ "models": { "mode": "merge", "providers": {} } }))?;
+    let mut config = parse_json_or_default(
+        existing,
+        json!({ "models": { "mode": "merge", "providers": {} } }),
+    )?;
     ensure_object(&mut config);
     if config.get("models").and_then(Value::as_object).is_none() {
         config["models"] = json!({});
     }
-    if config["models"].get("providers").and_then(Value::as_object).is_none() {
+    if config["models"]
+        .get("providers")
+        .and_then(Value::as_object)
+        .is_none()
+    {
         config["models"]["providers"] = json!({});
     }
     if config["models"].get("mode").is_none() {
@@ -777,7 +864,10 @@ fn build_openclaw_config(
 }
 
 fn clear_openclaw_config(existing: Option<String>) -> Result<Value, String> {
-    let mut config = parse_json_or_default(existing, json!({ "models": { "mode": "merge", "providers": {} } }))?;
+    let mut config = parse_json_or_default(
+        existing,
+        json!({ "models": { "mode": "merge", "providers": {} } }),
+    )?;
     if let Some(providers) = config
         .get_mut("models")
         .and_then(|models| models.get_mut("providers"))
@@ -806,8 +896,10 @@ fn build_hermes_yaml_text(
     key_platform: Option<&str>,
 ) -> Result<String, String> {
     let mut config = match existing {
-        Some(text) if !text.trim().is_empty() => serde_yaml::from_str::<serde_yaml::Value>(&text)
-            .map_err(|err| format!("解析 Hermes config.yaml 失败: {err}"))?,
+        Some(text) if !text.trim().is_empty() => {
+            serde_yaml::from_str::<serde_yaml::Value>(&text)
+                .map_err(|err| format!("解析 Hermes config.yaml 失败: {err}"))?
+        }
         _ => serde_yaml::Value::Mapping(serde_yaml::Mapping::new()),
     };
 
@@ -843,7 +935,9 @@ fn build_hermes_yaml_text(
     let sequence = providers
         .as_sequence_mut()
         .ok_or_else(|| "Hermes custom_providers 不是数组。".to_string())?;
-    sequence.retain(|item| item.get("name").and_then(serde_yaml::Value::as_str) != Some(HAPI_PROVIDER_ID));
+    sequence.retain(|item| {
+        item.get("name").and_then(serde_yaml::Value::as_str) != Some(HAPI_PROVIDER_ID)
+    });
     sequence.push(entry);
 
     serde_yaml::to_string(&config).map_err(|err| format!("序列化 Hermes config.yaml 失败: {err}"))
@@ -864,7 +958,9 @@ fn clear_hermes_yaml_text(existing: Option<String>) -> Result<String, String> {
         .get_mut("custom_providers")
         .and_then(serde_yaml::Value::as_sequence_mut)
     {
-        sequence.retain(|item| item.get("name").and_then(serde_yaml::Value::as_str) != Some(HAPI_PROVIDER_ID));
+        sequence.retain(|item| {
+            item.get("name").and_then(serde_yaml::Value::as_str) != Some(HAPI_PROVIDER_ID)
+        });
     }
 
     serde_yaml::to_string(&config).map_err(|err| format!("序列化 Hermes config.yaml 失败: {err}"))
@@ -877,7 +973,9 @@ fn read_configured_hermes_key(existing: Option<String>) -> Option<String> {
         .get("custom_providers")?
         .as_sequence()?
         .iter()
-        .find(|item| item.get("name").and_then(serde_yaml::Value::as_str) == Some(HAPI_PROVIDER_ID))?
+        .find(|item| {
+            item.get("name").and_then(serde_yaml::Value::as_str) == Some(HAPI_PROVIDER_ID)
+        })?
         .get("api_key")?
         .as_str()
         .map(str::to_string)
@@ -886,8 +984,9 @@ fn read_configured_hermes_key(existing: Option<String>) -> Option<String> {
 
 fn parse_json_or_default(existing: Option<String>, default_value: Value) -> Result<Value, String> {
     match existing {
-        Some(text) if !text.trim().is_empty() => serde_json::from_str::<Value>(&text)
-            .map_err(|err| format!("解析 JSON 配置失败: {err}")),
+        Some(text) if !text.trim().is_empty() => {
+            serde_json::from_str::<Value>(&text).map_err(|err| format!("解析 JSON 配置失败: {err}"))
+        }
         _ => Ok(default_value),
     }
 }
@@ -916,7 +1015,8 @@ fn read_optional_bytes(path: &Path) -> Result<Option<Vec<u8>>, String> {
 
 fn write_text_file(path: &Path, text: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|err| format!("创建 {} 失败: {err}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("创建 {} 失败: {err}", parent.display()))?;
     }
     fs::write(path, text).map_err(|err| format!("写入 {} 失败: {err}", path.display()))
 }
@@ -1011,12 +1111,19 @@ base_url = "https://api.openai.com/v1"
 
     #[test]
     fn opencode_config_adds_hapi_provider() {
-        let config = build_opencode_config(Some(r#"{ "theme": "dark" }"#.to_string()), "key", None).unwrap();
+        let config =
+            build_opencode_config(Some(r#"{ "theme": "dark" }"#.to_string()), "key", None).unwrap();
         let provider_id = opencode_provider_id("key");
 
         assert_eq!(config["theme"], "dark");
-        assert_eq!(config["provider"][&provider_id]["npm"], "@ai-sdk/openai-compatible");
-        assert_eq!(config["provider"][&provider_id]["options"]["baseURL"], HAPI_OPENCODE_BASE_URL);
+        assert_eq!(
+            config["provider"][&provider_id]["npm"],
+            "@ai-sdk/openai-compatible"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["options"]["baseURL"],
+            HAPI_OPENCODE_BASE_URL
+        );
         assert_eq!(config["provider"][&provider_id]["options"]["apiKey"], "key");
     }
 
@@ -1076,9 +1183,18 @@ base_url = "https://api.openai.com/v1"
         let config = build_opencode_config(None, "key", Some("openai")).unwrap();
         let provider_id = opencode_provider_id("key");
 
-        assert_eq!(config["provider"][&provider_id]["models"]["gpt-5.5"]["name"], "gpt-5.5");
-        assert_eq!(config["provider"][&provider_id]["models"]["gpt-5.4"]["name"], "gpt-5.4");
-        assert_eq!(config["provider"][&provider_id]["models"]["gpt-5.4-mini"]["name"], "gpt-5.4-mini");
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["gpt-5.5"]["name"],
+            "gpt-5.5"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["gpt-5.4"]["name"],
+            "gpt-5.4"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["gpt-5.4-mini"]["name"],
+            "gpt-5.4-mini"
+        );
     }
 
     #[test]
@@ -1120,10 +1236,22 @@ base_url = "https://api.openai.com/v1"
         let config = build_opencode_config(None, "key", None).unwrap();
         let provider_id = opencode_provider_id("key");
 
-        assert_eq!(config["provider"][&provider_id]["models"]["DeepSeek-v4-pro"]["name"], "DeepSeek-v4-pro");
-        assert_eq!(config["provider"][&provider_id]["models"]["DeepSeek-v4-flash"]["name"], "DeepSeek-v4-flash");
-        assert_eq!(config["provider"][&provider_id]["models"]["glm-5.2"]["name"], "glm-5.2");
-        assert_eq!(config["provider"][&provider_id]["models"]["kimi-2.7"]["name"], "kimi-2.7");
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["DeepSeek-v4-pro"]["name"],
+            "DeepSeek-v4-pro"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["DeepSeek-v4-flash"]["name"],
+            "DeepSeek-v4-flash"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["glm-5.2"]["name"],
+            "glm-5.2"
+        );
+        assert_eq!(
+            config["provider"][&provider_id]["models"]["kimi-2.7"]["name"],
+            "kimi-2.7"
+        );
     }
 
     #[test]
@@ -1135,29 +1263,44 @@ base_url = "https://api.openai.com/v1"
 
     #[test]
     fn openclaw_config_adds_hapi_provider() {
-        let config = build_openclaw_config(Some(r#"{ "models": { "mode": "merge" } }"#.to_string()), "key", None).unwrap();
+        let config = build_openclaw_config(
+            Some(r#"{ "models": { "mode": "merge" } }"#.to_string()),
+            "key",
+            None,
+        )
+        .unwrap();
 
         assert_eq!(config["models"]["mode"], "merge");
-        assert_eq!(config["models"]["providers"]["hapi"]["baseUrl"], HAPI_BASE_URL);
+        assert_eq!(
+            config["models"]["providers"]["hapi"]["baseUrl"],
+            HAPI_BASE_URL
+        );
         assert_eq!(config["models"]["providers"]["hapi"]["apiKey"], "key");
     }
 
     #[test]
     fn openclaw_config_adds_claude_models_for_anthropic_key() {
         let config = build_openclaw_config(None, "key", Some("anthropic")).unwrap();
-        let models = config["models"]["providers"]["hapi"]["models"].as_array().unwrap();
+        let models = config["models"]["providers"]["hapi"]["models"]
+            .as_array()
+            .unwrap();
         let ids = models
             .iter()
             .filter_map(|item| item.get("id").and_then(Value::as_str))
             .collect::<Vec<_>>();
 
-        assert_eq!(ids, vec!["claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"]);
+        assert_eq!(
+            ids,
+            vec!["claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"]
+        );
     }
 
     #[test]
     fn openclaw_config_adds_general_models_for_unrestricted_key() {
         let config = build_openclaw_config(None, "key", None).unwrap();
-        let models = config["models"]["providers"]["hapi"]["models"].as_array().unwrap();
+        let models = config["models"]["providers"]["hapi"]["models"]
+            .as_array()
+            .unwrap();
         let ids = models
             .iter()
             .filter_map(|item| item.get("id").and_then(Value::as_str))
@@ -1210,25 +1353,39 @@ custom_providers:
 
     #[test]
     fn clear_config_removes_hapi_provider_without_dropping_other_entries() {
-        let opencode = clear_opencode_config(Some(r#"{
+        let opencode = clear_opencode_config(
+            Some(
+                r#"{
           "provider": {
             "hapi": { "name": "Hapi" },
             "other": { "name": "Other" }
           }
-        }"#.to_string()), None).unwrap();
+        }"#
+                .to_string(),
+            ),
+            None,
+        )
+        .unwrap();
         assert!(opencode["provider"].get("hapi").is_none());
         assert_eq!(opencode["provider"]["other"]["name"], "Other");
 
-        let openclaw = clear_openclaw_config(Some(r#"{
+        let openclaw = clear_openclaw_config(Some(
+            r#"{
           "models": {
             "providers": {
               "hapi": { "baseUrl": "https://www.hapi666.com/api/v1" },
               "other": { "baseUrl": "https://example.com" }
             }
           }
-        }"#.to_string())).unwrap();
+        }"#
+            .to_string(),
+        ))
+        .unwrap();
         assert!(openclaw["models"]["providers"].get("hapi").is_none());
-        assert_eq!(openclaw["models"]["providers"]["other"]["baseUrl"], "https://example.com");
+        assert_eq!(
+            openclaw["models"]["providers"]["other"]["baseUrl"],
+            "https://example.com"
+        );
     }
 
     #[test]
@@ -1238,44 +1395,58 @@ custom_providers:
             Some("gemini-key".to_string())
         );
         assert_eq!(
-            read_configured_opencode_key(Some(r#"{
+            read_configured_opencode_key(Some(
+                r#"{
               "provider": {
                 "hapi": {
                   "options": { "apiKey": "opencode-key" }
                 }
               }
-            }"#.to_string())),
+            }"#
+                .to_string()
+            )),
             Some("opencode-key".to_string())
         );
         assert_eq!(
-            read_configured_openclaw_key(Some(r#"{
+            read_configured_openclaw_key(Some(
+                r#"{
               "models": {
                 "providers": {
                   "hapi": { "apiKey": "openclaw-key" }
                 }
               }
-            }"#.to_string())),
+            }"#
+                .to_string()
+            )),
             Some("openclaw-key".to_string())
         );
         assert_eq!(
-            read_configured_hermes_key(Some(r#"custom_providers:
+            read_configured_hermes_key(Some(
+                r#"custom_providers:
 - name: hapi
   api_key: hermes-key
-"#.to_string())),
+"#
+                .to_string()
+            )),
             Some("hermes-key".to_string())
         );
     }
 
     #[test]
     fn clear_codex_removes_hapi_provider_and_preserves_login_state() {
-        let auth = clear_codex_auth(Some(r#"{
+        let auth = clear_codex_auth(Some(
+            r#"{
           "OPENAI_API_KEY": "hapi-key",
           "tokens": { "access_token": "keep-me" }
-        }"#.to_string())).unwrap();
+        }"#
+            .to_string(),
+        ))
+        .unwrap();
         assert!(auth.get("OPENAI_API_KEY").is_none());
         assert_eq!(auth["tokens"]["access_token"], "keep-me");
 
-        let config = clear_codex_config_text(r#"model_provider = "hapi"
+        let config = clear_codex_config_text(
+            r#"model_provider = "hapi"
 model = "gpt-5"
 approval_policy = "never"
 
@@ -1284,7 +1455,9 @@ name = "Hapi"
 
 [model_providers.other]
 name = "Other"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         assert!(!config.contains("[model_providers.hapi]"));
         assert!(config.contains("[model_providers.other]"));
         assert!(config.contains("approval_policy = \"never\""));
@@ -1293,13 +1466,12 @@ name = "Other"
 
     #[test]
     fn configure_refuses_when_client_is_not_installed() {
-        let home = std::env::temp_dir().join(format!(
-            "hapi-client-setup-missing-{}",
-            std::process::id()
-        ));
+        let home =
+            std::env::temp_dir().join(format!("hapi-client-setup-missing-{}", std::process::id()));
         let paths = ClientSetupPaths::new(home);
 
-        let err = configure_client_with_paths(ClientSetupClient::Openclaw, "key", None, &paths).unwrap_err();
+        let err = configure_client_with_paths(ClientSetupClient::Openclaw, "key", None, &paths)
+            .unwrap_err();
 
         assert!(err.contains("未检测到 OpenClaw"));
     }

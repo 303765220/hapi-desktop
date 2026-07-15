@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 flex flex-col min-h-0">
     <!-- Header: Recharge and Balance -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0">
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.12fr_1fr] gap-6 shrink-0">
       
       <!-- Current Balance -->
       <div class="glass-panel p-6 flex flex-col justify-center">
@@ -19,15 +19,20 @@
         <h3 class="text-lg font-semibold text-white mb-4">兑换码</h3>
         <p class="text-sm text-zinc-400 mb-4">拥有兑换码？在此输入充值。</p>
         
-        <div class="flex space-x-2 mt-auto">
+        <div class="mt-auto flex flex-col gap-3 sm:flex-row sm:items-stretch rounded-xl border border-white/10 bg-black/35 p-1.5 shadow-inner shadow-black/20 focus-within:border-purple-500/40 focus-within:ring-2 focus-within:ring-purple-500/15">
           <input 
             v-model="redeemCode" 
             type="text" 
-            class="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            class="h-12 min-w-0 flex-1 bg-transparent px-4 text-base font-medium tracking-wide text-white placeholder-zinc-600 outline-none"
             placeholder="XXXX-XXXX-XXXX"
           />
-          <button @click="handleRedeem" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50" :disabled="redeeming">
-            兑换
+          <button
+            @click="handleRedeem"
+            class="inline-flex h-12 w-full shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-purple-600 px-5 text-sm font-bold text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-28"
+            :disabled="redeeming || !redeemCode.trim()"
+          >
+            <Loader2 v-if="redeeming" class="mr-2 h-4 w-4 animate-spin" />
+            {{ redeeming ? '处理中' : '兑换' }}
           </button>
         </div>
       </div>
@@ -40,14 +45,13 @@
         <p class="text-sm text-zinc-400 mb-6 relative z-10">
           前往发卡网购买授权兑换码
         </p>
-        <a 
-          href="https://catfk.com/shop/hapi" 
-          target="_blank"
-          class="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-all border border-white/5 flex items-center justify-center space-x-2 mt-auto relative z-10"
+        <button
+          @click="openExternalUrl('https://catfk.com/shop/hapi')"
+          class="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-all border border-white/5 flex items-center justify-center space-x-2 mt-auto relative z-10 cursor-pointer"
         >
           <ExternalLink class="w-4 h-4" />
           <span>前往购买</span>
-        </a>
+        </button>
       </div>
 
     </div>
@@ -192,9 +196,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ShoppingCart, ExternalLink, Sparkles, PackageOpen, Check, ArrowRight } from '@lucide/vue'
+import { ShoppingCart, ExternalLink, Sparkles, PackageOpen, Check, ArrowRight, Loader2 } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMessage } from '@/utils/message'
+import { openExternalUrl } from '@/utils/desktop-env'
 import { redeem, getHistory, type RedeemHistoryItem } from '@/api/redeem'
 import { paymentAPI } from '@/api/payment'
 import type { SubscriptionPlan } from '@/types/payment'
@@ -303,7 +308,7 @@ const getParsedFeatures = (featuresStr: any): string[] => {
 }
 
 const handleSubscribe = (_plan: SubscriptionPlan) => {
-  window.open('https://catfk.com/shop/hapi', '_blank')
+  openExternalUrl('https://catfk.com/shop/hapi')
 }
 
 // --- Lifecycle ---

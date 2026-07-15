@@ -174,9 +174,8 @@ fn parse_windows_release_plan_for_arch(
         codex_win_engine::manifest::parse_manifest_for_arch(manifest_text, Some(architecture))
             .map_err(|err| format!("parse Windows Codex manifest: {err}"))?;
     let package_url = windows_package_url_for_arch(release.download_architecture.as_deref());
-    let sha256 =
-        codex_win_engine::find_msix_sha256(checksums_text, &release.package_moniker)
-            .map_err(|err| format!("bind Windows Codex checksum: {err}"))?;
+    let sha256 = codex_win_engine::find_msix_sha256(checksums_text, &release.package_moniker)
+        .map_err(|err| format!("bind Windows Codex checksum: {err}"))?;
 
     Ok(WindowsReleasePlan {
         version: release.version,
@@ -193,8 +192,9 @@ fn fetch_windows_release_plan(architecture: &str) -> Result<WindowsReleasePlan, 
     let network = codex_win_engine::NetworkConfig::system();
     let manifest = codex_win_engine::fetch_text_with_network(CODEX_WINDOWS_MANIFEST_URL, &network)
         .map_err(|err| format!("fetch Windows Codex manifest: {err}"))?;
-    let checksums = codex_win_engine::fetch_text_with_network(CODEX_WINDOWS_CHECKSUMS_URL, &network)
-        .map_err(|err| format!("fetch Windows Codex checksums: {err}"))?;
+    let checksums =
+        codex_win_engine::fetch_text_with_network(CODEX_WINDOWS_CHECKSUMS_URL, &network)
+            .map_err(|err| format!("fetch Windows Codex checksums: {err}"))?;
     parse_windows_release_plan_for_arch(&manifest, &checksums, architecture)
 }
 
@@ -236,7 +236,8 @@ fn build_codex_install_status() -> CodexInstallStatus {
 fn download_windows_msix(plan: &WindowsReleasePlan) -> Result<PathBuf, String> {
     let staged_path = std::env::temp_dir().join(format!("{}.msix", plan.package_moniker));
     if let Some(parent) = staged_path.parent() {
-        fs::create_dir_all(parent).map_err(|err| format!("create Windows staging directory: {err}"))?;
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("create Windows staging directory: {err}"))?;
     }
 
     let cached_ok = staged_path.exists()
@@ -512,8 +513,12 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
         .next()
         .filter(|name| !name.is_empty())
         .unwrap_or("Codex.zip");
-    let staged_zip =
-        download_and_verify_macos_full(&latest.full.url, latest.full.length, signature, artifact_name)?;
+    let staged_zip = download_and_verify_macos_full(
+        &latest.full.url,
+        latest.full.length,
+        signature,
+        artifact_name,
+    )?;
 
     let install_dir = choose_macos_install_dir()?;
     let install_path = install_dir.join("Codex.app");
@@ -526,7 +531,10 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
         .map_err(|err| format!("verify macOS Codex codesign/Gatekeeper: {err}"))?;
     if install_path.exists() {
         let _ = fs::remove_dir_all(&staged_app);
-        return Err(format!("{} 已存在, 请先手动确认后再更新", install_path.display()));
+        return Err(format!(
+            "{} 已存在, 请先手动确认后再更新",
+            install_path.display()
+        ));
     }
     fs::rename(&staged_app, &install_path)
         .map_err(|err| format!("install macOS Codex.app: {err}"))?;
@@ -614,6 +622,7 @@ fn clear_client_config(
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             load_saved_credentials,
@@ -747,8 +756,7 @@ mod tests {
 aaa25c0bd3658edb80e3abf0f0dab3cc2d8bb6859fc68a746a6ea2e1a21991db  OpenAI.Codex_26.623.5175.0_arm64__2p2nqsd0c76g0.Msix\n\
 634ae6f5cd3adf26ed7da17d58286ff2c432ac48eae19d30cbc6a0974d2ac615  OpenAI.Codex_26.623.5175.0_x64__2p2nqsd0c76g0.Msix\n";
 
-        let plan =
-            parse_windows_release_plan_for_arch(manifest, checksums, "arm64").expect("plan");
+        let plan = parse_windows_release_plan_for_arch(manifest, checksums, "arm64").expect("plan");
 
         assert_eq!(plan.version, "26.623.5175.0");
         assert_eq!(

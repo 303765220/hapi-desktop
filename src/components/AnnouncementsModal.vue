@@ -162,52 +162,20 @@ const formatDate = (dateString?: string) => {
 </script>
 
 <style>
-/* Scoped styles for markdown */
-.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
-  color: #fff;
-  font-weight: bold;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+/* Custom Scrollbar for modal content */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
 }
-.markdown-body h1 { font-size: 1.5em; }
-.markdown-body h2 { font-size: 1.3em; }
-.markdown-body h3 { font-size: 1.1em; }
-.markdown-body p { margin-bottom: 1em; }
-.markdown-body p:last-child { margin-bottom: 0; }
-.markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-.markdown-body ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
-.markdown-body li { margin-bottom: 0.25em; }
-.markdown-body a { color: #a855f7; text-decoration: none; }
-.markdown-body a:hover { text-decoration: underline; }
-.markdown-body code { 
-  background-color: rgba(255,255,255,0.1); 
-  padding: 0.2em 0.4em; 
-  border-radius: 0.25rem;
-  font-family: monospace;
-  font-size: 0.9em;
-  color: #a78bfa;
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
-.markdown-body pre {
-  background-color: #18181b;
-  padding: 1em;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin-bottom: 1em;
-  border: 1px solid rgba(255,255,255,0.05);
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
-.markdown-body pre code {
-  background-color: transparent;
-  padding: 0;
-  color: #e4e4e7;
-}
-.markdown-body blockquote {
-  border-left: 4px solid #a855f7;
-  padding-left: 1em;
-  color: #a1a1aa;
-  margin: 1em 0;
-  background-color: rgba(168, 85, 247, 0.05);
-  padding: 0.5em 1em;
-  border-radius: 0 0.5rem 0.5rem 0;
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .fade-enter-active,

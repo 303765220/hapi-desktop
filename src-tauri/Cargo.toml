@@ -22,3 +22,4 @@ codex-mac-engine = { path = "crates/codex-mac-engine" }
 codex-win-engine = { path = "crates/codex-win-engine" }
 toml_edit = "0.25"
 serde_yaml = "0.9"
+tauri-plugin-shell = "2"

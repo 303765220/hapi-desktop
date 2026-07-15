@@ -1,8 +1,21 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-end">
-      
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="inline-flex w-full max-w-full flex-col gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3 sm:w-auto sm:min-w-[360px]">
+        <span class="text-xs font-medium text-zinc-500">API 端点地址</span>
+        <div class="flex items-center gap-2">
+          <span class="truncate font-mono text-sm font-medium text-zinc-100">{{ API_ENDPOINT_URL }}</span>
+          <button
+            @click="copyToClipboard(API_ENDPOINT_URL)"
+            class="shrink-0 text-zinc-500 transition-colors hover:text-white"
+            title="复制 API 端点地址"
+          >
+            <Copy class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       <button @click="handleCreate" class="px-4 py-2 bg-white text-black font-semibold rounded-lg hover:bg-zinc-200 transition-colors flex items-center disabled:opacity-50" :disabled="creating">
         <Loader2 v-if="creating" class="w-4 h-4 mr-2 animate-spin" />
         <Plus v-else class="w-4 h-4 mr-2" />
@@ -13,14 +26,14 @@
     <!-- Main Content -->
     <div class="glass-panel overflow-hidden">
       <div v-if="loading" class="w-full">
-        <table class="w-full text-left border-collapse min-w-[1120px]">
+        <table class="w-full text-left border-collapse min-w-[1380px]">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
               <th
-                v-for="i in 7"
+                v-for="i in 8"
                 :key="i"
                 class="px-6 py-4"
-                :class="i === 7 ? 'sticky right-0 z-20 bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)]' : ''"
+                :class="i === 8 ? 'sticky right-0 z-20 bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)]' : ''"
               >
                 <div class="h-4 bg-white/10 rounded w-16"></div>
               </th>
@@ -29,10 +42,10 @@
           <tbody class="divide-y divide-white/5">
             <tr v-for="i in 5" :key="i" class="animate-pulse">
               <td
-                v-for="j in 7"
+                v-for="j in 8"
                 :key="j"
                 class="px-6 py-4"
-                :class="j === 7 ? 'sticky right-0 z-10 bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)]' : ''"
+                :class="j === 8 ? 'sticky right-0 z-10 bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)]' : ''"
               >
                 <div class="h-4 bg-white/5 rounded" :class="j === 3 ? 'w-48' : 'w-24'"></div>
               </td>
@@ -50,12 +63,13 @@
       </div>
 
       <div v-else class="w-full overflow-x-auto relative">
-        <table class="w-full text-left border-collapse min-w-[1120px]">
+        <table class="w-full text-left border-collapse min-w-[1380px]">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">名称</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">分组</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">密钥</th>
+              <th class="px-6 py-4 text-sm font-medium text-zinc-400">用量</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">创建时间</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">上次使用</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">状态</th>
@@ -89,6 +103,22 @@
                   </button>
                 </div>
               </td>
+              <td class="px-6 py-4 min-w-[210px]">
+                <div class="space-y-1.5 text-sm">
+                  <div class="flex items-center gap-1.5 whitespace-nowrap">
+                    <span class="text-zinc-500">今日:</span>
+                    <span class="font-mono font-medium text-zinc-100">
+                      ${{ formatUsageCost(usageStats[item.id]?.today_actual_cost) }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1.5 whitespace-nowrap">
+                    <span class="text-zinc-500">近30天:</span>
+                    <span class="font-mono font-medium text-zinc-100">
+                      ${{ formatUsageCost(usageStats[item.id]?.total_actual_cost) }}
+                    </span>
+                  </div>
+                </div>
+              </td>
               <td class="px-6 py-4 text-sm text-zinc-400 whitespace-nowrap">
                 {{ formatBeijingTime(item.created_at) }}
               </td>
@@ -103,8 +133,15 @@
                   {{ getApiKeyStatusLabel(item.status) }}
                 </span>
               </td>
-              <td class="sticky right-0 z-10 px-6 py-4 text-right min-w-[160px] bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)] group-hover:bg-[#17171a]">
+              <td class="sticky right-0 z-10 px-6 py-4 text-right min-w-[190px] bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)] group-hover:bg-[#17171a]">
                 <div class="flex items-center justify-end space-x-3">
+                  <button
+                    @click="handleImportToCcSwitch(item)"
+                    class="text-zinc-400 hover:text-blue-400 transition-colors"
+                    title="导入 CC Switch"
+                  >
+                    <Upload class="w-4 h-4" />
+                  </button>
                   <button
                     @click="handleToggleStatus(item)"
                     class="text-zinc-400 transition-colors disabled:opacity-50"
@@ -200,6 +237,42 @@
         </div>
       </div>
     </Teleport>
+
+    <Transition name="fade">
+      <div v-if="showCcsClientSelect" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeCcsClientSelect"></div>
+        <div class="glass-panel p-6 max-w-md w-full relative z-10 shadow-2xl border-white/10">
+          <h3 class="text-lg font-bold text-white mb-2">选择导入目标</h3>
+          <p class="text-sm text-zinc-400 mb-5">Antigravity 分组可导入到 Claude Code 或 Gemini CLI，请选择当前要使用的客户端。</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button
+              @click="handleCcsClientSelect('claude')"
+              class="rounded-xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-purple-400/60 hover:bg-purple-500/10"
+            >
+              <Bot class="w-5 h-5 text-purple-400 mb-3" />
+              <div class="font-medium text-white">Claude Code</div>
+              <div class="text-xs text-zinc-500 mt-1">Claude 兼容入口</div>
+            </button>
+            <button
+              @click="handleCcsClientSelect('gemini')"
+              class="rounded-xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-blue-400/60 hover:bg-blue-500/10"
+            >
+              <Zap class="w-5 h-5 text-blue-400 mb-3" />
+              <div class="font-medium text-white">Gemini CLI</div>
+              <div class="text-xs text-zinc-500 mt-1">Gemini 兼容入口</div>
+            </button>
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button
+              @click="closeCcsClientSelect"
+              class="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg transition border border-white/10"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Create Key Modal -->
     <Transition name="fade">
@@ -370,18 +443,43 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Plus, Key, Copy, Trash2, Loader2, ChevronDown, Edit, Bot, Sun, Zap, Check, Power } from '@lucide/vue'
+import { Plus, Key, Copy, Trash2, Loader2, ChevronDown, Edit, Bot, Sun, Zap, Check, Power, Upload } from '@lucide/vue'
 import { list as getKeysList, create as createKey, deleteKey, toggleStatus, update as updateKey } from '@/api/keys'
+import { getDashboardApiKeysUsage, type BatchApiKeyUsageStats } from '@/api/usage'
 import { userGroupsAPI } from '@/api/groups'
 import { useMessage, showConfirm } from '@/utils/message'
-import type { Group } from '@/types'
+import type { ApiKey, Group, GroupPlatform } from '@/types'
 import { getApiKeyStatusLabel, getToggleApiKeyStatusAction } from './api-key-status'
+import { buildCcSwitchImportDeeplink, type CcSwitchClientType } from '@/utils/ccswitchImport'
 
 const message = useMessage()
+const API_ENDPOINT_URL = 'https://www.hapi666.com/'
+// CC Switch 深链使用站点根地址作为 provider homepage/endpoint。这里去掉尾斜杠，是为了避免 antigravity endpoint 被拼成 `//antigravity`；改回带尾斜杠会让导入配置出现重复斜杠。用 keys-view.spec 和 ccswitchImport.spec 共同验证按钮接线和平台映射。
+const CC_SWITCH_BASE_URL = API_ENDPOINT_URL.replace(/\/+$/, '')
+// CC Switch 的用量脚本沿用原 frontend 逻辑，通过 Bearer 当前 key 请求 `/v1/usage` 并抽取 remaining/unit；改成其他接口会导致 CC Switch 用量展示和站内 key 余额口径不一致。用线上 `/api` 代理不参与此脚本，发布后由 CC Switch 实际导入验证。
+const CC_SWITCH_USAGE_SCRIPT = `({
+  request: {
+    url: "{{baseUrl}}/v1/usage",
+    method: "GET",
+    headers: { "Authorization": "Bearer {{apiKey}}" }
+  },
+  extractor: function(response) {
+    const remaining = response?.remaining ?? response?.quota?.remaining ?? response?.balance;
+    const unit = response?.unit ?? response?.quota?.unit ?? "USD";
+    return {
+      isValid: response?.is_active ?? response?.isValid ?? true,
+      remaining,
+      unit
+    };
+  }
+})`
 const keys = ref<any[]>([])
+const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const availableGroups = ref<Group[]>([])
 const loading = ref(true)
 const creating = ref(false)
+const showCcsClientSelect = ref(false)
+const pendingCcsKey = ref<ApiKey | null>(null)
 
 const page = ref(1)
 const pageSize = ref(20)
@@ -436,10 +534,23 @@ const fetchKeys = async () => {
     const res = await getKeysList(page.value, pageSize.value)
     keys.value = res.items || []
     totalKeys.value = res.total || 0
+    await fetchKeysUsage(keys.value)
   } catch (err) {
     console.error("Failed to load keys", err)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchKeysUsage = async (items: ApiKey[]) => {
+  usageStats.value = {}
+  const keyIds = items.map(item => item.id)
+  if (keyIds.length === 0) return
+  try {
+    const res = await getDashboardApiKeysUsage(keyIds)
+    usageStats.value = res.stats || {}
+  } catch (err) {
+    console.error("Failed to load key usage", err)
   }
 }
 
@@ -624,6 +735,10 @@ const getGroupTheme = (name: string) => {
   return { icon: Zap, text: 'text-blue-500', bg: 'bg-blue-500/10' }
 }
 
+const formatUsageCost = (value: number | null | undefined) => {
+  return (value || 0).toFixed(4)
+}
+
 const handleUpdateGroup = async (item: any, groupId: number | null) => {
   if (item.group_id === groupId) return
   
@@ -638,5 +753,51 @@ const handleUpdateGroup = async (item: any, groupId: number | null) => {
     item.group_id = oldGroupId
     message.error('切换分组失败')
   }
+}
+
+const getKeyPlatform = (item: ApiKey): GroupPlatform => {
+  return item.group?.platform || availableGroups.value.find(g => g.id === item.group_id)?.platform || 'anthropic'
+}
+
+const handleImportToCcSwitch = (item: ApiKey) => {
+  const platform = getKeyPlatform(item)
+  if (platform === 'antigravity') {
+    pendingCcsKey.value = item
+    showCcsClientSelect.value = true
+    return
+  }
+
+  executeCcSwitchImport(item, platform === 'gemini' ? 'gemini' : 'claude')
+}
+
+const executeCcSwitchImport = (item: ApiKey, clientType: CcSwitchClientType) => {
+  const deeplink = buildCcSwitchImportDeeplink({
+    baseUrl: CC_SWITCH_BASE_URL,
+    platform: getKeyPlatform(item),
+    clientType,
+    providerName: 'Hapi',
+    apiKey: item.key,
+    usageScript: CC_SWITCH_USAGE_SCRIPT
+  })
+
+  try {
+    window.open(deeplink, '_self')
+    message.info('正在打开 CC Switch，如未唤起请先安装并注册协议。')
+  } catch (err) {
+    console.error('Import to CC Switch failed', err)
+    message.error('无法打开 CC Switch，请确认已安装并注册协议。')
+  }
+}
+
+const handleCcsClientSelect = (clientType: CcSwitchClientType) => {
+  if (pendingCcsKey.value) {
+    executeCcSwitchImport(pendingCcsKey.value, clientType)
+  }
+  closeCcsClientSelect()
+}
+
+const closeCcsClientSelect = () => {
+  showCcsClientSelect.value = false
+  pendingCcsKey.value = null
 }
 </script>
