@@ -17,4 +17,12 @@ describe('application routes', () => {
     expect(source).toContain("name: 'Register'")
     expect(source).toContain("@/views/auth/RegisterView.vue")
   })
+
+  it('exposes image creation route for authenticated users', () => {
+    const source = readFileSync(fileURLToPath(new URL('../index.ts', import.meta.url)), 'utf8')
+
+    expect(source).toContain("path: 'image-creation'")
+    expect(source).toContain("name: '图片创作'")
+    expect(source).toContain("@/views/ImageCreationView.vue")
+  })
 })

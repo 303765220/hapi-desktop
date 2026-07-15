@@ -7,7 +7,6 @@ import UserLayout from '@/layout/UserLayout.vue'
 import { createAppHistory } from './history'
 import { resolveAuthRedirect } from './auth-guard'
 import { useAuthStore } from '@/stores/auth'
-import { isTauriDesktop } from '@/utils/desktop-env'
 
 const router = createRouter({
   history: createAppHistory(),
@@ -43,6 +42,11 @@ const router = createRouter({
           component: () => import('@/views/KeysView.vue'),
         },
         {
+          path: 'image-creation',
+          name: '图片创作',
+          component: () => import('@/views/ImageCreationView.vue'),
+        },
+        {
           path: 'usage',
           name: 'Usage',
           component: () => import('@/views/UsageView.vue'),
@@ -70,14 +74,7 @@ const router = createRouter({
         {
           path: 'client-setup',
           name: '一键配置',
-          component: () => import('@/views/ClientSetupView.vue'),
-          beforeEnter: (_to, _from, next) => {
-            if (!isTauriDesktop()) {
-              next('/')
-            } else {
-              next()
-            }
-          }
+          component: () => import('@/views/ClientSetupView.vue')
         },
         {
           path: 'status',

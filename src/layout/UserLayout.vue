@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen bg-[#09090b] text-[#f4f4f5] flex overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 border-r border-white/10 bg-[#09090b]/80 backdrop-blur-xl flex flex-col transition-all duration-300">
+    <aside :class="['border-r border-white/10 bg-[#09090b]/80 backdrop-blur-xl flex flex-col transition-all duration-300', isTauriDesktop() ? 'w-[210px]' : 'w-64']">
       <div class="h-16 flex items-center px-6 border-b border-white/10">
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mr-3 shadow-lg shadow-purple-500/20">
           <span class="font-bold text-white text-lg">H</span>
@@ -117,7 +117,8 @@ import {
   Wallet,
   Activity,
   Bookmark,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Image as ImageIcon
 } from '@lucide/vue'
 import AnnouncementsModal from '@/components/AnnouncementsModal.vue'
 
@@ -149,10 +150,12 @@ const currentRouteName = computed(() => route.name || 'Dashboard')
 const uptimeDays = computed(() => getStableUptimeDays())
 
 const menuItems = computed(() => {
-  const items = [
+  return [
     { name: '仪表盘', path: '/', icon: LayoutDashboard },
     { name: '我的订阅', path: '/subscriptions', icon: Bookmark },
     { name: 'API 密钥', path: '/keys', icon: Key },
+    { name: '图片创作', path: '/image-creation', icon: ImageIcon },
+    { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal },
     { name: '可用模型', path: '/models', icon: Server },
     { name: '渠道状态', path: '/status', icon: Activity },
     { name: '使用明细', path: '/usage', icon: BarChart3 },
@@ -160,10 +163,6 @@ const menuItems = computed(() => {
     { name: '邀请返利', path: '/affiliate', icon: Users },
     { name: '个人设置', path: '/profile', icon: Settings }
   ]
-  if (isTauriDesktop()) {
-    items.splice(3, 0, { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal })
-  }
-  return items
 })
 </script>
 
