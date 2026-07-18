@@ -115,7 +115,6 @@ import {
   Bell as BellIcon,
   Users,
   Wallet,
-  Activity,
   Bookmark,
   SlidersHorizontal,
   Image as ImageIcon
@@ -157,7 +156,6 @@ const menuItems = computed(() => {
     { name: '图片创作', path: '/image-creation', icon: ImageIcon },
     { name: '一键配置', path: '/client-setup', icon: SlidersHorizontal },
     { name: '可用模型', path: '/models', icon: Server },
-    { name: '渠道状态', path: '/status', icon: Activity },
     { name: '使用明细', path: '/usage', icon: BarChart3 },
     { name: '钱包与套餐', path: '/billing', icon: Wallet },
     { name: '邀请返利', path: '/affiliate', icon: Users },
