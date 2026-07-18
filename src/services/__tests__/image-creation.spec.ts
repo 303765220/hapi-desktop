@@ -77,17 +77,10 @@ describe('image creation service', () => {
           id: 'job-1',
           previewUrl: 'https://example.com/out.png'
         }
-      ]
+      ],
+      keyError: null,
+      historyError: null
     })
-
-    expect(listApiKeys).toHaveBeenCalledWith(
-      1,
-      100,
-      expect.objectContaining({
-        status: 'active',
-        group_id: 113
-      })
-    )
   })
 
   it('keeps only active keys from the target group', () => {
@@ -100,6 +93,25 @@ describe('image creation service', () => {
     ).toEqual([
       { id: 3, status: 'active', group_id: 113 }
     ])
+  })
+
+  it('keeps the page usable when history loading fails', async () => {
+    vi.mocked(listApiKeys).mockResolvedValueOnce({
+      items: [
+        { id: 7, status: 'active', group_id: 113, key: 'sk-7', name: 'Target' }
+      ]
+    } as never)
+    vi.mocked(listImageGenerationJobs).mockRejectedValueOnce(new Error('history offline'))
+
+    await expect(loadImageCreationBootstrap()).resolves.toMatchObject({
+      keys: [
+        { id: 7, status: 'active', group_id: 113, key: 'sk-7', name: 'Target' }
+      ],
+      selectedKey: { id: 7, status: 'active', group_id: 113, key: 'sk-7', name: 'Target' },
+      history: [],
+      keyError: null,
+      historyError: '图片创作历史记录暂时不可用。'
+    })
   })
 
   it('hydrates a retry draft from a finished job', () => {

@@ -87,7 +87,6 @@ import {
   hydrateDraftFromJob,
   loadImageCreationBootstrap,
   pollImageCreationJob,
-  selectDefaultImageCreationKey,
   submitImageCreationDraft,
   validateImageCreationDraft,
 } from '@/services/image-creation'
@@ -268,10 +267,10 @@ const handleBootstrap = async () => {
     keys.value = bootstrap.keys
     history.value = bootstrap.history
     selectedKeyId.value = bootstrap.selectedKey?.id || null
+    errorMsg.value = bootstrap.keyError || ''
 
-    const firstKey = selectDefaultImageCreationKey(bootstrap.keys)
-    if (firstKey && !selectedKeyId.value) {
-      selectedKeyId.value = firstKey.id
+    if (bootstrap.historyError) {
+      console.warn(bootstrap.historyError)
     }
   } catch (error) {
     console.error('Failed to load image creation bootstrap', error)

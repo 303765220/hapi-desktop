@@ -24,6 +24,8 @@ export interface ImageCreationBootstrap {
   keys: ApiKey[]
   selectedKey: ApiKey | null
   history: ImageCreationHistoryItem[]
+  keyError: string | null
+  historyError: string | null
 }
 
 export interface PollImageCreationJobOptions {
@@ -75,22 +77,26 @@ export function validateImageCreationDraft(draft: ImageCreationDraft): ImageCrea
 }
 
 export async function loadImageCreationBootstrap(): Promise<ImageCreationBootstrap> {
-  const [keyPage, history] = await Promise.all([
+  const [keyPageResult, historyResult] = await Promise.allSettled([
     listApiKeys(1, 100, {
       status: 'active',
-      group_id: IMAGE_CREATION_KEY_GROUP_ID,
       sort_by: 'created_at',
       sort_order: 'desc',
     }),
     listImageGenerationJobsApi(),
   ])
 
-  const keys = filterImageCreationKeys(keyPage.items || [])
+  const keys = keyPageResult.status === 'fulfilled' ? filterImageCreationKeys(keyPageResult.value.items || []) : []
+  const history = historyResult.status === 'fulfilled'
+    ? [...historyResult.value].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    : []
 
   return {
     keys,
     selectedKey: selectDefaultImageCreationKey(keys),
-    history: [...history].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+    history,
+    keyError: keyPageResult.status === 'rejected' ? '图片创作可用 Key 加载失败，请稍后重试。' : null,
+    historyError: historyResult.status === 'rejected' ? '图片创作历史记录暂时不可用。' : null,
   }
 }
 
