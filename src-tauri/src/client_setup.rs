@@ -9,6 +9,7 @@ pub const HAPI_BASE_URL: &str = "https://www.hapi666.com/api/v1";
 // OpenCode 的 openai-compatible provider 会按自身规则拼接接口路径，写站点根地址可避免把 /api/v1 重复或错位拼到请求里；改回 API v1 会复现“请求已中断”，改成无尾斜杠需重新验证 OpenCode 拼接。用 opencode_config_uses_site_root_base_url 单测锁定。
 const HAPI_OPENCODE_BASE_URL: &str = "https://www.hapi666.com/";
 const HAPI_PROVIDER_ID: &str = "hapi";
+const CODEX_API_PROVIDER_ID: &str = "api";
 // 默认模型用于 Codex 和通用列表首项，保持 gpt-5 可以让旧的通用客户端仍能发起 OpenAI 兼容请求；改成渠道专属模型会导致未带 platform 的 Key 写入后不可用，删除则会让配置生成缺少 model。用 cargo test client_setup 覆盖默认分支和清理逻辑。
 const DEFAULT_CODE_MODEL: &str = "gpt-5";
 // 未识别或不限平台的 Key 写入 OpenCode/OpenClaw/Hermes 时使用通用模型列表；新增模型必须先确认站点已支持，否则客户端会配置成功但调用失败。减少会让通用 Key 看不到可用模型，调整顺序会影响 Hermes 默认 model。用 general_models 单测验证三类客户端输出。
@@ -583,18 +584,20 @@ fn build_codex_config_text(existing: &str) -> Result<String, String> {
             .map_err(|err| format!("解析 Codex config.toml 失败: {err}"))?
     };
 
-    doc["model_provider"] = value(HAPI_PROVIDER_ID);
-    doc["model"] = value(DEFAULT_CODE_MODEL);
-    doc["model_reasoning_effort"] = value("high");
-    doc["disable_response_storage"] = value(true);
-
     if !doc["model_providers"].is_table() {
         doc["model_providers"] = Item::Table(Table::new());
     }
-    let providers = doc["model_providers"]
-        .as_table_mut()
-        .ok_or_else(|| "Codex model_providers 不是 TOML 表。".to_string())?;
-    providers[HAPI_PROVIDER_ID] = Item::Table(build_codex_hapi_provider_table());
+    let provider_id = {
+        let providers = doc["model_providers"]
+            .as_table_mut()
+            .ok_or_else(|| "Codex model_providers 不是 TOML 表。".to_string())?;
+        upsert_codex_hapi_provider(providers)?
+    };
+
+    doc["model_provider"] = value(provider_id);
+    doc["model"] = value(DEFAULT_CODE_MODEL);
+    doc["model_reasoning_effort"] = value("high");
+    doc["disable_response_storage"] = value(true);
 
     Ok(doc.to_string())
 }
@@ -634,6 +637,23 @@ fn build_codex_hapi_provider_table() -> Table {
     table["wire_api"] = value("responses");
     table["requires_openai_auth"] = value(true);
     table
+}
+
+fn upsert_codex_hapi_provider(providers: &mut Table) -> Result<&'static str, String> {
+    if providers
+        .get(CODEX_API_PROVIDER_ID)
+        .map(Item::is_table)
+        .unwrap_or(false)
+    {
+        let provider = providers[CODEX_API_PROVIDER_ID]
+            .as_table_mut()
+            .ok_or_else(|| "Codex model_providers.api 不是 TOML 表。".to_string())?;
+        provider["base_url"] = value(HAPI_BASE_URL);
+        return Ok(CODEX_API_PROVIDER_ID);
+    }
+
+    providers[HAPI_PROVIDER_ID] = Item::Table(build_codex_hapi_provider_table());
+    Ok(HAPI_PROVIDER_ID)
 }
 
 fn build_gemini_env_text(existing: Option<String>, api_key: &str) -> Result<String, String> {
@@ -1143,6 +1163,26 @@ base_url = "https://api.openai.com/v1"
         assert!(text.contains("[model_providers.hapi]"));
         assert!(text.contains("base_url = \"https://www.hapi666.com/api/v1\""));
         assert!(text.contains("model_provider = \"hapi\""));
+    }
+
+    #[test]
+    fn codex_config_reuses_existing_api_provider() {
+        let existing = r#"model_provider = "api"
+
+[model_providers.api]
+name = "api"
+base_url = "https://api.66hxhx.xyz"
+wire_api = "responses"
+requires_openai_auth = true
+"#;
+
+        let text = build_codex_config_text(existing).unwrap();
+
+        assert!(text.contains("[model_providers.api]"));
+        assert!(!text.contains("[model_providers.hapi]"));
+        assert!(text.contains("model_provider = \"api\""));
+        assert!(text.contains("name = \"api\""));
+        assert!(text.contains("base_url = \"https://www.hapi666.com/api/v1\""));
     }
 
     #[test]
