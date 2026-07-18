@@ -96,3 +96,10 @@ export function filterApiKeysForClient(keys: ApiKey[], client: ClientSetupClient
     return key.group?.platform === platform
   })
 }
+
+export function isClientConfiguredForSelectedKey(status: ClientSetupStatus, selectedKey?: string | null): boolean {
+  if (!status.configured || !status.configuredKey || !selectedKey) {
+    return false
+  }
+  return status.configuredKey === selectedKey
+}

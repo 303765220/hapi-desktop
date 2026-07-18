@@ -50,12 +50,12 @@
           <div class="p-2 bg-white/5 rounded-lg border border-white/5 group-hover:border-pink-500/30 transition-colors">
             <Coins class="w-4 h-4 text-pink-400" />
           </div>
-          <span v-if="stats?.today_actual_cost > 0" class="text-xs font-medium px-2 py-1 bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20">今日: ${{ (stats?.today_actual_cost || 0).toFixed(4) }}</span>
+          <span v-if="stats?.total_actual_cost > 0" class="text-xs font-medium px-2 py-1 bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20">总计: ${{ (stats?.total_actual_cost || 0).toFixed(4) }}</span>
         </div>
         <div>
-          <p class="text-xs text-zinc-400 font-medium mb-1">总计消费 (USD)</p>
+          <p class="text-xs text-zinc-400 font-medium mb-1">今日消费 (USD)</p>
           <div class="flex items-baseline space-x-1">
-            <h2 class="text-2xl font-bold tracking-tight text-white">${{ (stats?.total_actual_cost || 0).toFixed(4) }}</h2>
+            <h2 class="text-2xl font-bold tracking-tight text-white">${{ (stats?.today_actual_cost || 0).toFixed(4) }}</h2>
           </div>
         </div>
       </div>
@@ -67,12 +67,12 @@
           <div class="p-2 bg-white/5 rounded-lg border border-white/5 group-hover:border-blue-500/30 transition-colors">
             <Activity class="w-4 h-4 text-blue-400" />
           </div>
-          <span v-if="stats?.today_requests > 0" class="text-xs font-medium px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">今日: {{ stats?.today_requests.toLocaleString() }}</span>
+          <span v-if="stats?.total_requests > 0" class="text-xs font-medium px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">总计: {{ (stats?.total_requests || 0).toLocaleString() }}</span>
         </div>
         <div>
-          <p class="text-xs text-zinc-400 font-medium mb-1">总请求数</p>
+          <p class="text-xs text-zinc-400 font-medium mb-1">今日请求数</p>
           <div class="flex items-baseline space-x-1">
-            <h2 class="text-2xl font-bold tracking-tight text-white">{{ (stats?.total_requests || 0).toLocaleString() }}</h2>
+            <h2 class="text-2xl font-bold tracking-tight text-white">{{ (stats?.today_requests || 0).toLocaleString() }}</h2>
           </div>
         </div>
       </div>
@@ -84,19 +84,19 @@
           <div class="p-2 bg-white/5 rounded-lg border border-white/5 group-hover:border-amber-500/30 transition-colors">
             <Zap class="w-4 h-4 text-amber-400" />
           </div>
-          <span v-if="stats?.today_tokens > 0" class="text-xs font-medium px-2 py-1 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">今日: {{ formatNumberKMB(stats?.today_tokens) }}</span>
+          <span v-if="stats?.total_tokens > 0" class="text-xs font-medium px-2 py-1 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">总计: {{ formatNumberKMB(stats?.total_tokens) }}</span>
         </div>
         <div>
           <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-1.5 sm:mb-0.5 gap-1 sm:gap-0">
-            <p class="text-xs text-zinc-400 font-medium">消耗 Tokens</p>
+            <p class="text-xs text-zinc-400 font-medium">今日消耗 Tokens</p>
             <div class="text-[10px] sm:text-xs text-zinc-500 flex flex-wrap gap-2 sm:gap-0 sm:space-x-2 font-medium">
-              <span title="输入Tokens">入: {{ formatNumberKMB(stats?.total_input_tokens) }}</span>
-              <span title="输出Tokens">出: {{ formatNumberKMB(stats?.total_output_tokens) }}</span>
-              <span title="缓存Tokens">缓: {{ formatNumberKMB((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0)) }}</span>
+              <span title="输入Tokens">入: {{ formatNumberKMB(stats?.today_input_tokens) }}</span>
+              <span title="输出Tokens">出: {{ formatNumberKMB(stats?.today_output_tokens) }}</span>
+              <span title="缓存Tokens">缓: {{ formatNumberKMB((stats?.today_cache_creation_tokens || 0) + (stats?.today_cache_read_tokens || 0)) }}</span>
             </div>
           </div>
           <div class="flex items-baseline space-x-1">
-            <h2 class="text-2xl font-bold tracking-tight text-white break-all">{{ formatNumberKMB(stats?.total_tokens) }}</h2>
+            <h2 class="text-2xl font-bold tracking-tight text-white break-all">{{ formatNumberKMB(stats?.today_tokens) }}</h2>
           </div>
         </div>
       </div>
@@ -254,7 +254,7 @@
         <div v-else-if="modelStats.length === 0" class="flex-1 flex items-center justify-center text-zinc-500 text-sm">
           暂无数据
         </div>
-        <div v-else class="flex flex-col sm:flex-row items-center gap-6 flex-1 min-h-0">
+        <div v-else class="flex flex-col lg:flex-row xl:flex-col 2xl:flex-row items-center gap-6 flex-1 min-h-0">
           <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="modelChartData" :options="doughnutOptions" />
           </div>
@@ -317,7 +317,7 @@
         <div v-else-if="groupStats.length === 0" class="flex-1 flex items-center justify-center text-zinc-500 text-sm">
           暂无数据
         </div>
-        <div v-else class="flex flex-col sm:flex-row items-center gap-6 flex-1 min-h-0">
+        <div v-else class="flex flex-col lg:flex-row xl:flex-col 2xl:flex-row items-center gap-6 flex-1 min-h-0">
           <div class="relative h-48 w-48 shrink-0">
             <Doughnut :data="groupChartData" :options="doughnutOptions" />
           </div>
@@ -684,7 +684,7 @@ onMounted(async () => {
 
 .distribution-table {
   width: 100%;
-  min-width: 640px;
+  min-width: 460px;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
@@ -704,7 +704,7 @@ onMounted(async () => {
 
 .distribution-table th {
   height: 36px;
-  padding: 0 14px;
+  padding: 0 10px;
   color: #a1a1aa;
   font-size: 11px;
   font-weight: 600;
@@ -713,7 +713,7 @@ onMounted(async () => {
 
 .distribution-table td {
   height: 34px;
-  padding: 0 14px;
+  padding: 0 10px;
   color: #a1a1aa;
   white-space: nowrap;
   border-top: 1px solid rgba(255, 255, 255, 0.055);

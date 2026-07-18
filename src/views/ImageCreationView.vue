@@ -51,8 +51,9 @@ import type { ApiKey } from '@/types'
 
 // 本地预览阶段固定指向 Infinite Canvas dev server；改成线上同域部署时应替换为 `/canvas/`，否则线上用户访问不到本机 3000 端口。用 image-creation-view.spec 锁定当前本地预览行为。
 const LOCAL_CANVAS_URL = 'http://127.0.0.1:3000/'
-// Infinite Canvas 使用 OpenAI 兼容 Base URL；这里走 Hapi `/v1`，确保请求按所选站内 API Key 进入 Hapi 计费、用量和风控。改成站点根地址可能导致客户端拼接路径不符合 OpenAI SDK 预期。用 image-creation-view.spec 验证。
-const HAPI_OPENAI_BASE_URL = 'https://www.hapi666.com/v1'
+// Infinite Canvas 的 OpenAI 模板会自行拼接 `/v1/images/...`；这里必须传站点根地址，
+// 否则会形成 `/v1/v1/images/generations`。用 image-creation-view.spec 锁定。
+const HAPI_OPENAI_BASE_URL = 'https://www.hapi666.com/'
 
 const apiKeys = ref<ApiKey[]>([])
 const selectedKey = ref('')

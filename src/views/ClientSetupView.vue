@@ -3,17 +3,25 @@
     <!-- Ambient Background Glow -->
     <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3 z-0"></div>
 
-    <!-- Desktop Required Warning -->
-    <div v-if="!isDesktop" class="relative z-10 glass-panel p-8 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+    <!-- Desktop Required Warning & Download -->
+    <div v-if="!isDesktop" class="relative z-10 glass-panel p-8 border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
       <div class="flex flex-col items-center text-center max-w-lg mx-auto py-8">
-        <div class="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 mb-6 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+        <div class="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 mb-6 shadow-[0_0_30px_rgba(168,85,247,0.2)]">
           <MonitorDown class="w-10 h-10" />
         </div>
-        <h3 class="text-2xl font-bold text-white mb-3">需要桌面客户端</h3>
-        <p class="text-zinc-400 leading-relaxed">
-          由于安全限制，Web 端无法直接读取和写入您的本机配置文件。
-          请使用 <strong>Hapi 桌面端应用</strong> 来体验一键配置功能。
+        <h3 class="text-2xl font-bold text-white mb-3">需要 Hapi 桌面端</h3>
+        <p class="text-zinc-400 leading-relaxed mb-8">
+          一键配置（包含一键安装 Codex 等功能）依赖本机的环境访问权限，网页端无法直接使用。请下载并安装 Hapi 桌面端应用以获得完整的自动化体验。
         </p>
+
+        <router-link
+          to="/"
+          class="inline-flex items-center justify-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-500/25 active:scale-95"
+        >
+          <MonitorDown class="w-5 h-5" />
+          <span>下载 Hapi 桌面端</span>
+        </router-link>
+        <p class="mt-4 text-xs text-zinc-500">当前仅支持 macOS，Windows 版本敬请期待</p>
       </div>
     </div>
 
@@ -83,8 +91,8 @@
                  <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
                    <Settings2 class="w-3 h-3" /> Hapi 状态
                  </div>
-                 <span class="text-xs font-bold" :class="item.configured ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-zinc-500'">
-                   {{ item.configured ? '✓ 已配置' : '未配置' }}
+                 <span class="text-xs font-bold" :class="isConfiguredForSelectedKey(item) ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-zinc-500'">
+                   {{ isConfiguredForSelectedKey(item) ? '✓ 已配置' : '未配置' }}
                  </span>
                </div>
                <div class="text-[10px] text-zinc-400/80 truncate font-mono">
@@ -153,6 +161,24 @@
               <X v-else class="h-4 w-4" />
             </button>
           </div>
+          <div
+            v-if="item.client === 'codex' && installingCodex"
+            class="relative z-10 mt-3 rounded-xl border border-white/10 bg-black/40 p-3"
+          >
+            <div class="mb-2 flex items-center justify-between gap-3 text-[11px] text-zinc-400">
+              <span class="truncate">{{ installProgressLabel }}</span>
+              <span v-if="installProgressPercent !== null" class="font-mono text-purple-300">
+                {{ installProgressPercent }}%
+              </span>
+            </div>
+            <div class="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-purple-500 transition-all duration-300"
+                :class="installProgressPercent === null ? 'w-1/3 animate-pulse' : ''"
+                :style="installProgressPercent === null ? undefined : { width: `${installProgressPercent}%` }"
+              ></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -180,6 +206,7 @@ import {
   clearClientConfig,
   configureClient,
   filterApiKeysForClient,
+  isClientConfiguredForSelectedKey,
   loadClientSetupStatus,
   requiredPlatformForClient,
   type ClientSetupClient,
@@ -198,8 +225,38 @@ const pageError = ref('')
 const apiKeys = ref<ApiKey[]>([])
 const statuses = ref<ClientSetupStatus[]>([])
 const selectedKeys = ref<Partial<Record<ClientSetupClient, string>>>({})
+interface CodexInstallProgress {
+  phase: string
+  downloaded: number | null
+  total: number | null
+  percent: number | null
+  note: string
+}
+
+const installProgress = ref<CodexInstallProgress | null>(null)
 
 const activeKeys = computed(() => apiKeys.value.filter((key) => key.status === 'active'))
+
+const formatBytes = (bytes: number) => {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${bytes} B`
+}
+
+const installProgressPercent = computed(() => {
+  const percent = installProgress.value?.percent
+  if (percent === null || percent === undefined) return null
+  return Math.max(0, Math.min(100, Math.round(percent)))
+})
+
+const installProgressLabel = computed(() => {
+  const progress = installProgress.value
+  if (!progress) return '正在准备 Codex 安装'
+  if (progress.downloaded !== null && progress.total !== null) {
+    return `${progress.note} · ${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`
+  }
+  return progress.note || '正在执行 Codex 安装'
+})
 
 const formatKey = (key: string) => {
   if (!key) return ''
@@ -246,12 +303,16 @@ const setSelectedKey = (client: ClientSetupClient, key: string) => {
   }
 }
 
+const isConfiguredForSelectedKey = (item: ClientSetupStatus) => {
+  return isClientConfiguredForSelectedKey(item, selectedKeys.value[item.client])
+}
+
 const canWriteConfig = (item: ClientSetupStatus) => {
-  return !item.configured
+  return !isConfiguredForSelectedKey(item)
 }
 
 const canClearConfig = (item: ClientSetupStatus) => {
-  return item.configured
+  return isConfiguredForSelectedKey(item)
 }
 
 const syncConfiguredKeys = () => {
@@ -307,15 +368,23 @@ const refreshAll = async () => {
 
 const handleInstallCodex = async () => {
   installingCodex.value = true
+  installProgress.value = null
   pageError.value = ''
+  let stopListening: (() => void) | null = null
   try {
+    const { listen } = await import('@tauri-apps/api/event')
+    stopListening = await listen<CodexInstallProgress>('codex-install-progress', (event) => {
+      installProgress.value = event.payload
+    })
     await installCodex()
     message.success('Codex 安装流程已执行完成')
     await loadStatuses()
   } catch (err) {
     pageError.value = err instanceof Error ? err.message : String(err)
   } finally {
+    stopListening?.()
     installingCodex.value = false
+    installProgress.value = null
   }
 }
 

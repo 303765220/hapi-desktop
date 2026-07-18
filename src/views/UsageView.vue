@@ -384,9 +384,17 @@ const fetchStats = async () => {
 }
 
 const availableKeys = ref<any[]>([])
+const getTodayStr = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const filters = ref({
-  start_date: '',
-  end_date: '',
+  start_date: getTodayStr(),
+  end_date: getTodayStr(),
   api_key_id: null as number | null
 })
 

@@ -4,6 +4,7 @@ import {
   clearClientConfig,
   configureClient,
   filterApiKeysForClient,
+  isClientConfiguredForSelectedKey,
   loadClientSetupStatus,
   requiredPlatformForClient,
   type ClientConfigureResult,
@@ -93,5 +94,18 @@ describe('client setup service', () => {
 
     expect(requiredPlatformForClient('codex')).toBe('openai')
     expect(filterApiKeysForClient(keys, 'codex').map((key) => key.key)).toEqual(['openai-key'])
+  })
+
+  it('treats a client as configured only when the selected key matches the stored key', () => {
+    const configuredStatus: ClientSetupStatus = {
+      ...status[0],
+      configured: true,
+      configuredKey: 'configured-key',
+      configuredKeys: ['configured-key'],
+    }
+
+    expect(isClientConfiguredForSelectedKey(configuredStatus, 'configured-key')).toBe(true)
+    expect(isClientConfiguredForSelectedKey(configuredStatus, 'other-key')).toBe(false)
+    expect(isClientConfiguredForSelectedKey(configuredStatus, '')).toBe(false)
   })
 })

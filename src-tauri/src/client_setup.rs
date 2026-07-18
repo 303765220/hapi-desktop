@@ -191,6 +191,24 @@ fn command_exists(command: &str) -> bool {
     }
 }
 
+fn codex_app_installed() -> bool {
+    if cfg!(target_os = "macos") {
+        codex_mac_engine::sys::installed_codex_build().is_some()
+    } else if cfg!(target_os = "windows") {
+        codex_win_engine::detect_installed_codex(&windows_codex_app_root()).is_some()
+    } else {
+        false
+    }
+}
+
+fn windows_codex_app_root() -> PathBuf {
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join("Programs")
+        .join("Codex")
+}
+
 fn has_hapi_config(client: ClientSetupClient, paths: &ClientSetupPaths) -> bool {
     configured_key_for_client(client, paths).is_some()
         || match client {
@@ -270,8 +288,25 @@ fn configured_keys_for_client(client: ClientSetupClient, paths: &ClientSetupPath
     }
 }
 
+fn client_installed_from_detection_signals(
+    client: ClientSetupClient,
+    paths: &ClientSetupPaths,
+    command_available: bool,
+    codex_app_available: bool,
+) -> bool {
+    match client {
+        // 一键配置面向 Hapi 桌面端的 Codex App 安装器，安装状态必须来自真实 App；
+        // command -v codex 只能说明 CLI 可用，~/.codex 只能说明有配置残留。把它们算作
+        // 已安装会误导用户跳过 App 安装，用 codex_install_detection_* 单测锁定。
+        ClientSetupClient::Codex => codex_app_available,
+        _ => command_available || paths.install_dir(client).exists(),
+    }
+}
+
 fn client_installed(client: ClientSetupClient, paths: &ClientSetupPaths) -> bool {
-    command_exists(client.command_name()) || paths.install_dir(client).exists()
+    let command_available = command_exists(client.command_name());
+    let codex_app_available = matches!(client, ClientSetupClient::Codex) && codex_app_installed();
+    client_installed_from_detection_signals(client, paths, command_available, codex_app_available)
 }
 
 pub fn client_setup_status() -> Result<Vec<ClientSetupStatus>, String> {
@@ -280,14 +315,27 @@ pub fn client_setup_status() -> Result<Vec<ClientSetupStatus>, String> {
         .into_iter()
         .map(|client| {
             let command = client.command_name().to_string();
-            let dir = paths.install_dir(client);
             let config_path = paths.config_path(client);
-            let installed = command_exists(&command) || dir.exists();
+            let command_available = command_exists(&command);
+            let codex_app_available =
+                matches!(client, ClientSetupClient::Codex) && codex_app_installed();
+            let installed = client_installed_from_detection_signals(
+                client,
+                &paths,
+                command_available,
+                codex_app_available,
+            );
             let configured = has_hapi_config(client, &paths);
             let configured_keys = configured_keys_for_client(client, &paths);
             let configured_key = configured_keys.first().cloned();
             let note = if installed {
-                "已检测到客户端，可写入 Hapi 配置。".to_string()
+                if matches!(client, ClientSetupClient::Codex) {
+                    "已检测到 Codex App，可写入 Hapi 配置。".to_string()
+                } else {
+                    "已检测到客户端，可写入 Hapi 配置。".to_string()
+                }
+            } else if matches!(client, ClientSetupClient::Codex) {
+                "未检测到 Codex App，请先安装后再配置。".to_string()
             } else {
                 "未检测到客户端，请先安装后再配置。".to_string()
             };
@@ -1462,6 +1510,45 @@ name = "Other"
         assert!(config.contains("[model_providers.other]"));
         assert!(config.contains("approval_policy = \"never\""));
         assert!(!config.contains("model_provider = \"hapi\""));
+    }
+
+    #[test]
+    fn codex_install_detection_ignores_cli_and_config_directory_without_app() {
+        let home = std::env::temp_dir().join(format!(
+            "hapi-client-setup-codex-home-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&home);
+        fs::create_dir_all(home.join(".codex")).unwrap();
+        let paths = ClientSetupPaths::new(home.clone());
+
+        assert!(!client_installed_from_detection_signals(
+            ClientSetupClient::Codex,
+            &paths,
+            true,
+            false,
+        ));
+
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn codex_install_detection_uses_app_presence() {
+        let home = std::env::temp_dir().join(format!(
+            "hapi-client-setup-codex-app-home-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&home);
+        let paths = ClientSetupPaths::new(home.clone());
+
+        assert!(client_installed_from_detection_signals(
+            ClientSetupClient::Codex,
+            &paths,
+            false,
+            true,
+        ));
+
+        let _ = fs::remove_dir_all(&home);
     }
 
     #[test]

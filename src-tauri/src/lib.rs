@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 mod client_setup;
 
@@ -11,6 +11,7 @@ const CODEX_MAC_ARM64_APPCAST_URL: &str = "https://codexapp.agentsmirror.com/lat
 const CODEX_MAC_X64_APPCAST_URL: &str = "https://codexapp.agentsmirror.com/latest/appcast-x64.xml";
 const CODEX_WINDOWS_MANIFEST_URL: &str = "https://codexapp.agentsmirror.com/latest/manifest";
 const CODEX_WINDOWS_CHECKSUMS_URL: &str = "https://codexapp.agentsmirror.com/latest/checksums";
+const CODEX_INSTALL_PROGRESS_EVENT: &str = "codex-install-progress";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,6 +31,16 @@ pub struct CodexInstallStatus {
     installed_path: Option<String>,
     version: Option<String>,
     verified: bool,
+    note: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexInstallProgress {
+    phase: String,
+    downloaded: Option<u64>,
+    total: Option<u64>,
+    percent: Option<f64>,
     note: String,
 }
 
@@ -188,6 +199,29 @@ fn parse_windows_release_plan_for_arch(
     })
 }
 
+fn emit_codex_install_progress(
+    app: &tauri::AppHandle,
+    phase: &str,
+    downloaded: Option<u64>,
+    total: Option<u64>,
+    note: &str,
+) {
+    let percent = match (downloaded, total) {
+        (Some(done), Some(total)) if total > 0 => {
+            Some((done as f64 / total as f64 * 100.0).min(100.0))
+        }
+        _ => None,
+    };
+    let payload = CodexInstallProgress {
+        phase: phase.to_string(),
+        downloaded,
+        total,
+        percent,
+        note: note.to_string(),
+    };
+    let _ = app.emit(CODEX_INSTALL_PROGRESS_EVENT, payload);
+}
+
 fn fetch_windows_release_plan(architecture: &str) -> Result<WindowsReleasePlan, String> {
     let network = codex_win_engine::NetworkConfig::system();
     let manifest = codex_win_engine::fetch_text_with_network(CODEX_WINDOWS_MANIFEST_URL, &network)
@@ -215,7 +249,7 @@ fn build_codex_install_status() -> CodexInstallStatus {
     } else if platform == "windows" {
         "将读取 Windows 安装清单并校验后执行 MSIX 安装。".to_string()
     } else if platform == "macos" {
-        "将读取 macOS 安装清单并校验后安装 Codex.app。".to_string()
+        "将读取 macOS 安装清单并校验后安装 Codex 桌面端。".to_string()
     } else {
         "将安装当前系统对应的 Codex。".to_string()
     };
@@ -391,6 +425,7 @@ fn require_macos_supported(required: Option<&str>) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 fn download_and_verify_macos_full(
+    app: &tauri::AppHandle,
     url: &str,
     size: u64,
     signature: &str,
@@ -405,13 +440,37 @@ fn download_and_verify_macos_full(
         if staged_path.exists() {
             let _ = fs::remove_file(&staged_path);
         }
+        emit_codex_install_progress(
+            app,
+            "download",
+            Some(0),
+            Some(size),
+            "正在下载 Codex 安装包",
+        );
+        let progress_app = app.clone();
         codex_mac_engine::download::download_to_with_progress_bounded(
             url,
             &staged_path,
             codex_mac_engine::limits::MAX_PACKAGE_BYTES,
-            &|_| {},
+            &move |downloaded| {
+                emit_codex_install_progress(
+                    &progress_app,
+                    "download",
+                    Some(downloaded),
+                    Some(size),
+                    "正在下载 Codex 安装包",
+                );
+            },
         )
         .map_err(|err| format!("download macOS Codex package: {err}"))?;
+    } else {
+        emit_codex_install_progress(
+            app,
+            "download",
+            Some(size),
+            Some(size),
+            "已复用本地安装包缓存",
+        );
     }
 
     let actual_size = fs::metadata(&staged_path)
@@ -426,13 +485,14 @@ fn download_and_verify_macos_full(
 
     let bytes = codex_mac_engine::download::read_file(&staged_path)
         .map_err(|err| format!("read macOS Codex package: {err}"))?;
+    emit_codex_install_progress(app, "verify", Some(size), Some(size), "正在校验安装包签名");
     codex_mac_engine::verify_sparkle(&bytes, signature)
         .map_err(|err| format!("verify macOS Codex Sparkle signature: {err}"))?;
     Ok(staged_path)
 }
 
 #[cfg(target_os = "macos")]
-fn unpack_macos_codex_zip(zip: &Path, out_app: &Path) -> Result<(), String> {
+fn unpack_macos_codex_zip(zip: &Path, install_dir: &Path) -> Result<PathBuf, String> {
     let work = std::env::temp_dir().join(format!(
         "hapi-codex-macos-install-{}",
         std::time::SystemTime::now()
@@ -456,13 +516,23 @@ fn unpack_macos_codex_zip(zip: &Path, out_app: &Path) -> Result<(), String> {
     }
 
     let app_path = find_codex_app(&extract)
-        .ok_or_else(|| "macOS Codex package did not contain Codex.app".to_string())?;
-    if out_app.exists() {
-        fs::remove_dir_all(out_app).map_err(|err| format!("remove old staged Codex.app: {err}"))?;
+        .ok_or_else(|| "macOS Codex package did not contain a Codex-lineage app".to_string())?;
+    let app_name = app_path
+        .file_name()
+        .ok_or_else(|| "macOS Codex package app had no bundle name".to_string())?
+        .to_owned();
+    let staged_app = install_dir.join(format!(
+        ".hapi-codex-install-{}-{}",
+        std::process::id(),
+        app_name.to_string_lossy()
+    ));
+    if staged_app.exists() {
+        fs::remove_dir_all(&staged_app)
+            .map_err(|err| format!("remove old staged Codex app: {err}"))?;
     }
-    fs::rename(&app_path, out_app).map_err(|err| format!("stage Codex.app: {err}"))?;
+    fs::rename(&app_path, &staged_app).map_err(|err| format!("stage Codex app: {err}"))?;
     let _ = fs::remove_dir_all(&work);
-    Ok(())
+    Ok(staged_app)
 }
 
 #[cfg(target_os = "macos")]
@@ -471,14 +541,20 @@ fn find_codex_app(root: &Path) -> Option<PathBuf> {
     while let Some(dir) = stack.pop() {
         for entry in fs::read_dir(&dir).ok()?.flatten() {
             let path = entry.path();
-            if path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name == "Codex.app")
-            {
-                return Some(path);
-            }
             if path.is_dir() {
+                let is_app_bundle = path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| ext == "app");
+                if is_app_bundle {
+                    if codex_mac_engine::sys::read_bundle_identifier(&path.to_string_lossy())
+                        .as_deref()
+                        == Some(codex_mac_engine::sys::CODEX_BUNDLE_ID)
+                    {
+                        return Some(path);
+                    }
+                    continue;
+                }
                 stack.push(path);
             }
         }
@@ -487,11 +563,15 @@ fn find_codex_app(root: &Path) -> Option<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
+fn install_macos_codex(
+    status: &mut CodexInstallStatus,
+    app: &tauri::AppHandle,
+) -> Result<(), String> {
     if macos_installed_codex().is_some() {
         return Err("已检测到 Codex, 第一版安装器只处理首次安装。".to_string());
     }
 
+    emit_codex_install_progress(app, "check", None, None, "正在读取 Codex 安装清单");
     let appcast_url = macos_appcast_url(&status.architecture);
     let xml = codex_mac_engine::sys::fetch_text(appcast_url)
         .map_err(|err| format!("fetch macOS Codex appcast: {err}"))?;
@@ -514,6 +594,7 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
         .filter(|name| !name.is_empty())
         .unwrap_or("Codex.zip");
     let staged_zip = download_and_verify_macos_full(
+        app,
         &latest.full.url,
         latest.full.length,
         signature,
@@ -521,14 +602,20 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
     )?;
 
     let install_dir = choose_macos_install_dir()?;
-    let install_path = install_dir.join("Codex.app");
-    let staged_app = install_dir.join(format!(
-        ".hapi-codex-install-{}-Codex.app",
-        std::process::id()
-    ));
-    unpack_macos_codex_zip(&staged_zip, &staged_app)?;
+    emit_codex_install_progress(app, "unpack", None, None, "正在解压 Codex 桌面端");
+    let staged_app = unpack_macos_codex_zip(&staged_zip, &install_dir)?;
+    emit_codex_install_progress(app, "gatekeeper", None, None, "正在校验 App 签名");
     codex_mac_engine::gate_reconstructed(&staged_app)
         .map_err(|err| format!("verify macOS Codex codesign/Gatekeeper: {err}"))?;
+    let install_path = install_dir.join(
+        staged_app
+            .file_name()
+            .and_then(|name| name.to_str())
+            .and_then(|name| {
+                name.strip_prefix(&format!(".hapi-codex-install-{}-", std::process::id()))
+            })
+            .ok_or_else(|| "staged Codex app had unexpected name".to_string())?,
+    );
     if install_path.exists() {
         let _ = fs::remove_dir_all(&staged_app);
         return Err(format!(
@@ -536,8 +623,9 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
             install_path.display()
         ));
     }
+    emit_codex_install_progress(app, "install", None, None, "正在写入应用目录");
     fs::rename(&staged_app, &install_path)
-        .map_err(|err| format!("install macOS Codex.app: {err}"))?;
+        .map_err(|err| format!("install macOS Codex app: {err}"))?;
 
     let detected = macos_installed_codex();
     status.staged_path = Some(staged_zip.to_string_lossy().into_owned());
@@ -545,19 +633,26 @@ fn install_macos_codex(status: &mut CodexInstallStatus) -> Result<(), String> {
     status.version = Some(latest.short_version.clone());
     status.verified = true;
     status.installed = detected.is_some() || install_path.exists();
-    status.note = "已通过 macOS appcast 校验并安装 Codex.app。".to_string();
+    status.note = "已通过 macOS appcast 校验并安装 Codex 桌面端。".to_string();
+    emit_codex_install_progress(app, "done", None, None, "Codex 桌面端安装完成");
     Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
-fn install_macos_codex(_status: &mut CodexInstallStatus) -> Result<(), String> {
+fn install_macos_codex(
+    _status: &mut CodexInstallStatus,
+    _app: &tauri::AppHandle,
+) -> Result<(), String> {
     Err("macOS Codex 安装只可在 macOS 上执行".to_string())
 }
 
-fn install_codex_for_platform(status: &mut CodexInstallStatus) -> Result<(), String> {
+fn install_codex_for_platform(
+    status: &mut CodexInstallStatus,
+    app: &tauri::AppHandle,
+) -> Result<(), String> {
     match status.platform.as_str() {
         "windows" => install_windows_codex(status),
-        "macos" => install_macos_codex(status),
+        "macos" => install_macos_codex(status, app),
         _ => Err("当前系统暂不支持 Codex 安装".to_string()),
     }
 }
@@ -589,12 +684,18 @@ fn codex_install_status() -> Result<CodexInstallStatus, String> {
 }
 
 #[tauri::command]
-fn install_codex() -> Result<CodexInstallStatus, String> {
+async fn install_codex(app: tauri::AppHandle) -> Result<CodexInstallStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || install_codex_blocking(app))
+        .await
+        .map_err(|err| format!("Codex 安装任务异常结束: {err}"))?
+}
+
+fn install_codex_blocking(app: tauri::AppHandle) -> Result<CodexInstallStatus, String> {
     let mut status = build_codex_install_status();
     if status.platform == "unsupported" {
         return Err("当前系统暂不支持 Codex 安装引导".to_string());
     }
-    install_codex_for_platform(&mut status)?;
+    install_codex_for_platform(&mut status, &app)?;
     Ok(status)
 }
 
@@ -720,6 +821,60 @@ mod tests {
             macos_appcast_url("x64"),
             "https://codexapp.agentsmirror.com/latest/appcast-x64.xml"
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    fn write_fake_macos_app(root: &Path, name: &str, bundle_id: &str) -> PathBuf {
+        let app = root.join(name);
+        let contents = app.join("Contents");
+        fs::create_dir_all(&contents).expect("create fake app");
+        fs::write(
+            contents.join("Info.plist"),
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>{bundle_id}</string>
+  <key>CFBundleVersion</key>
+  <string>5307</string>
+</dict>
+</plist>
+"#
+            ),
+        )
+        .expect("write fake app plist");
+        app
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn macos_package_scan_accepts_chatgpt_named_codex_bundle() {
+        let root =
+            std::env::temp_dir().join(format!("hapi-codex-package-chatgpt-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        write_fake_macos_app(&root, "ChatGPT.app", codex_mac_engine::sys::CODEX_BUNDLE_ID);
+
+        let found = find_codex_app(&root).expect("find codex-lineage app");
+
+        assert_eq!(
+            found.file_name().and_then(|name| name.to_str()),
+            Some("ChatGPT.app")
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn macos_package_scan_rejects_chatgpt_classic_bundle() {
+        let root =
+            std::env::temp_dir().join(format!("hapi-codex-package-classic-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        write_fake_macos_app(&root, "ChatGPT.app", "com.openai.chat");
+
+        assert_eq!(find_codex_app(&root), None);
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

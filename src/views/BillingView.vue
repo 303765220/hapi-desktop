@@ -3,22 +3,28 @@
     <!-- Header: Recharge and Balance -->
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.12fr_1fr] gap-6 shrink-0">
       
-      <!-- Current Balance -->
-      <div class="glass-panel p-6 flex flex-col justify-center">
-        <h3 class="text-lg font-semibold text-white mb-4">当前余额</h3>
-        <div class="text-4xl font-bold text-white mb-2">¥{{ (authStore.user?.balance || 0).toLocaleString() }}</div>
-        <p class="text-sm text-zinc-400 mb-6">可用于所有计费服务</p>
-        
-        <div class="w-full bg-white/5 rounded-full h-2 mb-2 mt-auto">
-          <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full" style="width: 15%"></div>
-        </div>
+      <!-- Buy Code Section -->
+      <div class="glass-panel p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 pointer-events-none"></div>
+        <ShoppingCart class="w-8 h-8 text-purple-400 mb-3 relative z-10" />
+        <h3 class="text-lg font-semibold text-white mb-2 relative z-10 whitespace-nowrap">获取充值额度</h3>
+        <p class="text-sm text-zinc-400 mb-6 relative z-10 whitespace-nowrap">
+          前往发卡网购买授权兑换码
+        </p>
+        <button
+          @click="openExternalUrl('https://catfk.com/shop/hapi')"
+          class="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-all border border-white/5 flex items-center justify-center space-x-2 mt-auto relative z-10 cursor-pointer"
+        >
+          <ExternalLink class="w-4 h-4" />
+          <span>前往购买</span>
+        </button>
       </div>
 
       <!-- Redeem Code -->
       <div class="glass-panel p-6 flex flex-col justify-center">
-        <h3 class="text-lg font-semibold text-white mb-4">兑换码</h3>
-        <p class="text-sm text-zinc-400 mb-4">拥有兑换码？在此输入充值。</p>
-        
+        <h3 class="text-lg font-semibold text-white mb-4 whitespace-nowrap">兑换码</h3>
+        <p class="text-sm text-zinc-400 mb-4 whitespace-nowrap">拥有兑换码？在此输入充值。</p>
+
         <div class="mt-auto flex flex-col gap-3 sm:flex-row sm:items-stretch rounded-xl border border-white/10 bg-black/35 p-1.5 shadow-inner shadow-black/20 focus-within:border-purple-500/40 focus-within:ring-2 focus-within:ring-purple-500/15">
           <input 
             v-model="redeemCode" 
@@ -37,21 +43,15 @@
         </div>
       </div>
 
-      <!-- Buy Code Section -->
-      <div class="glass-panel p-6 flex flex-col items-center justify-center text-center relative overflow-hidden group">
-        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 pointer-events-none"></div>
-        <ShoppingCart class="w-8 h-8 text-purple-400 mb-3 relative z-10" />
-        <h3 class="text-lg font-semibold text-white mb-2 relative z-10">获取充值额度</h3>
-        <p class="text-sm text-zinc-400 mb-6 relative z-10">
-          前往发卡网购买授权兑换码
-        </p>
-        <button
-          @click="openExternalUrl('https://catfk.com/shop/hapi')"
-          class="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-all border border-white/5 flex items-center justify-center space-x-2 mt-auto relative z-10 cursor-pointer"
-        >
-          <ExternalLink class="w-4 h-4" />
-          <span>前往购买</span>
-        </button>
+      <!-- Current Balance -->
+      <div class="glass-panel p-6 flex flex-col justify-center">
+        <h3 class="text-lg font-semibold text-white mb-4 whitespace-nowrap">当前余额</h3>
+        <div class="text-4xl font-bold text-white mb-2 whitespace-nowrap truncate">¥{{ (authStore.user?.balance || 0).toLocaleString() }}</div>
+        <p class="text-sm text-zinc-400 mb-6 whitespace-nowrap">可用于所有计费服务</p>
+
+        <div class="w-full bg-white/5 rounded-full h-2 mb-2 mt-auto">
+          <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full" style="width: 15%"></div>
+        </div>
       </div>
 
     </div>

@@ -62,7 +62,7 @@
         <p class="text-zinc-400 mb-6 max-w-md mx-auto">您尚未创建任何 API 密钥。创建一个来开始您的 API 调用之旅吧。</p>
       </div>
 
-      <div v-else class="w-full overflow-x-auto relative">
+      <div v-else class="w-full overflow-x-scroll relative custom-scrollbar">
         <table class="w-full text-left border-collapse min-w-[1380px]">
           <thead>
             <tr class="border-b border-white/10 bg-black/20">
@@ -73,7 +73,7 @@
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">创建时间</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400 whitespace-nowrap">上次使用</th>
               <th class="px-6 py-4 text-sm font-medium text-zinc-400">状态</th>
-              <th class="sticky right-0 z-20 px-6 py-4 text-sm font-medium text-zinc-400 text-right bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)]">操作</th>
+              <th class="sticky right-0 z-20 px-6 py-4 text-sm font-medium text-zinc-400 text-right bg-[#111114] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.28)] w-[1%] whitespace-nowrap">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
@@ -133,7 +133,7 @@
                   {{ getApiKeyStatusLabel(item.status) }}
                 </span>
               </td>
-              <td class="sticky right-0 z-10 px-6 py-4 text-right min-w-[190px] bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)] group-hover:bg-[#17171a]">
+              <td class="sticky right-0 z-10 px-6 py-4 text-right w-[1%] whitespace-nowrap bg-[#0f0f12] border-l border-white/10 shadow-[-12px_0_24px_rgba(0,0,0,0.22)] group-hover:bg-[#17171a]">
                 <div class="flex items-center justify-end space-x-3">
                   <button
                     @click="handleImportToCcSwitch(item)"
