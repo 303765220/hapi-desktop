@@ -13,6 +13,8 @@ import type {
 } from '@/types/image-creation'
 
 const MAX_REFERENCE_IMAGES = 4
+// 图片创作页只允许选择 113 分组的 Key，因为这套工作台只面向这一组独立的 OpenAI key 池；改成其他分组会把不兼容的 key 暴露出来，导致生成接口直接失败。是否仍然正确，应通过页面下拉选项和实际提交接口成功率一起验证。
+const IMAGE_CREATION_KEY_GROUP_ID = 113
 // 轮询间隔不能太短，否则前端会不断打扰后端；默认 1.5 秒可以兼顾反馈速度和请求量。改更小会增加抖动，改更大则会让用户明显感觉卡住。后续需要用真实生成任务的返回节奏验证。 
 const DEFAULT_POLL_INTERVAL_MS = 1500
 // 最大轮询次数不能无限大，否则卡住的任务会把页面挂死；默认 20 次约等于 30 秒，足以覆盖大多数图片生成。改更小会更容易误判失败，改更大会拖长失败反馈。后续要根据真实生成耗时和失败样本再调。
@@ -35,6 +37,10 @@ function sleep(ms: number): Promise<void> {
 
 export function selectDefaultImageCreationKey(keys: ApiKey[]): ApiKey | null {
   return keys.find((key) => key.status === 'active') || null
+}
+
+export function filterImageCreationKeys(keys: ApiKey[]): ApiKey[] {
+  return keys.filter((key) => key.status === 'active' && key.group_id === IMAGE_CREATION_KEY_GROUP_ID)
 }
 
 export function validateImageCreationDraft(draft: ImageCreationDraft): ImageCreationDraft {
@@ -72,13 +78,14 @@ export async function loadImageCreationBootstrap(): Promise<ImageCreationBootstr
   const [keyPage, history] = await Promise.all([
     listApiKeys(1, 100, {
       status: 'active',
+      group_id: IMAGE_CREATION_KEY_GROUP_ID,
       sort_by: 'created_at',
       sort_order: 'desc',
     }),
     listImageGenerationJobsApi(),
   ])
 
-  const keys = keyPage.items || []
+  const keys = filterImageCreationKeys(keyPage.items || [])
 
   return {
     keys,

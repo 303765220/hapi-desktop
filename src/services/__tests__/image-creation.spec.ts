@@ -13,6 +13,7 @@ vi.mock('@/api/image-creation', () => ({
 import { list as listApiKeys } from '@/api/keys'
 import { createImageGenerationJob, getImageGenerationJob, listImageGenerationJobs } from '@/api/image-creation'
 import {
+  filterImageCreationKeys,
   hydrateDraftFromJob,
   loadImageCreationBootstrap,
   pollImageCreationJob,
@@ -27,12 +28,13 @@ const makeReferenceImages = (count: number) =>
 describe('image creation service', () => {
   it('selects the first active key and rejects more than four reference images', () => {
     const keys = [
-      { id: 1, status: 'inactive' },
-      { id: 2, status: 'active' },
-      { id: 3, status: 'active' }
+      { id: 1, status: 'inactive', group_id: 113 },
+      { id: 2, status: 'active', group_id: 112 },
+      { id: 3, status: 'active', group_id: 113 }
     ] as any[]
 
-    expect(selectDefaultImageCreationKey(keys)?.id).toBe(2)
+    expect(filterImageCreationKeys(keys).map((item) => item.id)).toEqual([3])
+    expect(selectDefaultImageCreationKey(filterImageCreationKeys(keys))?.id).toBe(3)
     expect(() =>
       validateImageCreationDraft({
         keyId: 2,
@@ -48,9 +50,9 @@ describe('image creation service', () => {
   it('loads bootstrap state from active keys and recent jobs', async () => {
     vi.mocked(listApiKeys).mockResolvedValueOnce({
       items: [
-        { id: 1, status: 'inactive' },
-        { id: 2, status: 'active', key: 'sk-2', name: 'Second' },
-        { id: 3, status: 'active', key: 'sk-3', name: 'Third' }
+        { id: 1, status: 'inactive', group_id: 113 },
+        { id: 2, status: 'active', group_id: 112, key: 'sk-2', name: 'Second' },
+        { id: 3, status: 'active', group_id: 113, key: 'sk-3', name: 'Third' }
       ]
     } as never)
     vi.mocked(listImageGenerationJobs).mockResolvedValueOnce([
@@ -67,11 +69,9 @@ describe('image creation service', () => {
 
     await expect(loadImageCreationBootstrap()).resolves.toMatchObject({
       keys: [
-        { id: 1, status: 'inactive' },
-        { id: 2, status: 'active', key: 'sk-2', name: 'Second' },
-        { id: 3, status: 'active', key: 'sk-3', name: 'Third' }
+        { id: 3, status: 'active', group_id: 113, key: 'sk-3', name: 'Third' }
       ],
-      selectedKey: { id: 2, status: 'active', key: 'sk-2', name: 'Second' },
+      selectedKey: { id: 3, status: 'active', group_id: 113, key: 'sk-3', name: 'Third' },
       history: [
         {
           id: 'job-1',
@@ -79,6 +79,27 @@ describe('image creation service', () => {
         }
       ]
     })
+
+    expect(listApiKeys).toHaveBeenCalledWith(
+      1,
+      100,
+      expect.objectContaining({
+        status: 'active',
+        group_id: 113
+      })
+    )
+  })
+
+  it('keeps only active keys from the target group', () => {
+    expect(
+      filterImageCreationKeys([
+        { id: 1, status: 'inactive', group_id: 113 },
+        { id: 2, status: 'active', group_id: 112 },
+        { id: 3, status: 'active', group_id: 113 }
+      ] as any[])
+    ).toEqual([
+      { id: 3, status: 'active', group_id: 113 }
+    ])
   })
 
   it('hydrates a retry draft from a finished job', () => {
