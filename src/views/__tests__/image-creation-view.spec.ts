@@ -13,5 +13,6 @@ describe('image creation view', () => {
     expect(source).toContain('ImageCreationHistoryList')
     expect(source).toContain('ImageCreationResultGrid')
     expect(source).toContain('referenceImages')
+    expect(source).toContain("gpt-image-2")
   })
 })

@@ -181,6 +181,8 @@ const emit = defineEmits<{
 const uploadInput = ref<HTMLInputElement | null>(null)
 
 const modelOptions = [
+  { value: 'gpt-image-2', label: 'gpt-image-2' },
+  { value: 'gpt-image-1.5', label: 'gpt-image-1.5' },
   { value: 'gpt-image-1', label: 'gpt-image-1' }
 ]
 
